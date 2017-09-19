@@ -1,0 +1,18 @@
+{
+  "name": "fs-api",
+  "private": true,
+  "scripts": {
+    "start": "meteor run"
+  },
+  "dependencies": {
+    "awesome-phonenumber": "^2.1.0",
+    "babel-runtime": "^6.26.0",
+    "bcrypt": "^1.0.2",
+    "body-parser": "^1.17.2",
+    "fibers": "^1.0.15",
+    "follow-redirects": "^1.2.4",
+    "joi": "^10.6.0",
+    "moment": "^2.18.1",
+    "multer": "^1.3.0"
+  }
+}

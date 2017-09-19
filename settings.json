@@ -1,0 +1,43 @@
+{
+    "astpp": {
+        "apiKey": "",
+        "apiSecret": ""
+    },
+    "freeswitch": {
+        "ip": "",
+        "port": 0,
+        "password": ""
+    },
+    "smpp": {
+        "ip": "",
+        "port": "",
+        "systemId": "",
+        "password": "",
+        "systemType": ""
+    },
+    "scp": {
+        "host": "",
+        "user": "",
+        "pass": ""
+    },
+    "mm4": {
+        "bandwidth": {
+            "host": "",
+            "port": ""
+        }
+    },
+    "pricing": {
+        "sms": {
+            "in": 0.002,
+            "out": 0.005
+        },
+        "mms": {
+            "in": 0.002,
+            "out": 0.005
+        },
+        "pushNotification": 0.001,
+        "socialPost": 0.003,
+        "socialComment": 0.002,
+        "fax": 0.04
+    }
+}
