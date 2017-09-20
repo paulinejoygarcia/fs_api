@@ -3,6 +3,8 @@ import { Enc } from './Encryption';
 import {CallsDB} from '../calls';
 import {PushNotifDB} from '../pushNotifications';
 import moment from 'moment';
+import CallCtrl from './controller/Call';
+import PushNotifCtrl from './controller/PushNotif';
 
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
@@ -54,30 +56,39 @@ export default class API {
                     }
                 }
 			case ENDPOINT.VOICE:
-				let queryVoice = {account_id:this.accountId};
-				let optionsVoice = {};
-				if(body.limit)
-                    optionsVoice.limit = parseInt(body.limit);
+                const ctrl = null;
+                //const ctrl = new Controller(this.request, this.urlParams);
+                //let queryVoice = {account_id:this.accountId};
+				//let optionsVoice = {};
+				//if(body.limit)
+                //    optionsVoice.limit = parseInt(body.limit);
+                //CallsDB.find(queryVoice,optionsVoice).fetch()
                 return {
                     success: true,
                     code: 200,
-                    data: CallsDB.find(queryVoice,optionsVoice).fetch()
+                    data: ctrl.list()
                 }
 			case ENDPOINT.PUSH:
 			    let data = {};
+			    const ctrl = null;
+                //const ctrl = new Controller(this.request, this.urlParams);
 			    switch(method) {
                     case METHOD.GET:
-                        let queryPush = {account_id:this.accountId};
-                        let optionsPush = {sort:{createdTimestamp:-1}};
-                        if(this.subEndpoint)
-                            queryPush._id = new Mongo.ObjectID(this.subEndpoint);
-                        if(body.limit)
-                            optionsPush.limit = parseInt(body.limit);
-                        data = PushNotifDB.find(queryPush,optionsPush).fetch();
+                        // let queryPush = {account_id:this.accountId};
+                        // let optionsPush = {sort:{createdTimestamp:-1}};
+                        // if(this.subEndpoint)
+                        //     queryPush._id = new Mongo.ObjectID(this.subEndpoint);
+                        // if(body.limit)
+                        //     optionsPush.limit = parseInt(body.limit);
+                        // data = PushNotifDB.find(queryPush,optionsPush).fetch();
+                        data = ctrl.list();
                         break;
                     case METHOD.POST:
-                        body.account_id = this.accountId;
-                        data = PushNotifDB.insert(body);
+                        //body.account_id = this.accountId;
+                        //data = PushNotifDB.insert(body);
+                        let res = ctrl.insert();
+                        if(res.success) res = ctrl.push();
+                        data = res;
                         break;
                 }
                return {
