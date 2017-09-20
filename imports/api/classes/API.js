@@ -1,6 +1,8 @@
 import { Enc } from './Encryption';
 import moment from 'moment';
 import Joi from './Joi';
+import {CallsDB} from '../calls';
+import {PushNotifDB} from '../pushNotifications';
 
 export default class API {
     constructor(account, code, ipAddress) {
@@ -53,46 +55,86 @@ export default class API {
     }
 
 	getCalls(params) {
-		//this.account.accountId
         //this.astpp.callList(params.limit || 20);
+        let schema = {
+            limit: Joi.number(false)
+        };
+        let validate = Joi.validate({ limit:params.limit }, schema);
+        if (!validate.valid)
+            return {
+                success: false,
+                data: validate.data
+            };
+        let query = {account_id:this.account.accountId};
+        let options = {};
+        if(params.limit)
+            options.limit = parseInt(params.limit);
         return {
             success: true,
-            data: [
-				{
-					"_id" : "59c17bc523a20127c5744578",
-					"call_start" : 1505852207.0,
-					"caller_id" : "12023041949 < 12023041949>",
-					"called_number" : "+12023041949",
-					"duration" : 40,
-					"disposition" : "NORMAL_CLEARING",
-					"price" : 0.006,
-					"call_id" : "d3a7e166-3841-4a04-b5f5-c859cf1b8cffSTANDARD_13",
-				}
-			]
+            data: CallsDB.find(query,options).fetch()
         };
     }
 
-    getPushNotifications(params) {
+    sendPushNotification(params) {
         //this.account.accountId
         //this.astpp.callList(params.limit || 20);
+        let schema = {
+            registration_id: Joi.string(true,"alphanum"),
+            server_key: Joi.string(true,"token"),
+            title: Joi.string(true,"alphanum"),
+            body: Joi.string(true,"alphanum"),
+            icon: Joi.string(false,"uri"),
+            action: Joi.string(false,"uri"),
+        };
+        let validate = Joi.validate({
+            registration_id:params.registration_id,
+            server_key:params.server_key,
+            title:params.title,
+            body:params.body,
+            icon:params.icon,
+            action:params.action,
+        }, schema);
+        if (!validate.valid)
+            return {
+                success: false,
+                data: validate.data
+            };
+        if(!params.icon)
+            params.icon = null;
+        if(!params.action)
+            params.action = null;
+        params.account_id = this.account.accountId;
         return {
             success: true,
             data: [
                 {
-                    "_id" : "59c17d9f23a20127c574457a",
-                    "registration_id" : "ek4QJcWc80I:APA91bE...",
-                    "title" : "Sample Title 2",
-                    "body" : "Sample Body 2",
-                    "server_key" : "AAAAFEC8mk4:APA91bGuaGJSUufIzbBtOWyCH...",
-                    "icon" : null,
-                    "action" : null,
-                    "priority" : 10,
-                    "message_id" : "0:1505327862064389%31bd1c9631bd1c96",
-                    "price" : 0.001,
-                    "created_timestamp" : 1505852743.0,
-                    "account_id" : "1978198228"
+                    "_id" : PushNotifDB.insert(params)
                 }
             ]
+        };
+    }
+
+    getPushNotifications(params) {
+        //this.astpp.callList(params.limit || 20);
+        let schema = {
+            limit: Joi.number(false),
+            subendpoint: Joi.string(false,'alphanum')
+        };
+        let validate = Joi.validate({ limit:params.limit, subendpoint:params.subendpoint }, schema);
+        if (!validate.valid)
+            return {
+                success: false,
+                data: validate.data
+            };
+        let query = {account_id:this.account.accountId};
+        let options = {sort:{createdTimestamp:-1}};
+        if(params.subendpoint)
+            query._id = new Mongo.ObjectID(params.subendpoint);
+        if(params.limit)
+            options.limit = parseInt(params.limit);
+        return {
+            success: true,
+            data: PushNotifDB.find(query,options).fetch()
         };
     }
 }
