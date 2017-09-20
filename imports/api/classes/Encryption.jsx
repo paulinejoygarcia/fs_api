@@ -41,7 +41,7 @@ class Encryption {
         return retval.join('').replace(/\0/g, '');
     }
     strchr(arr, key) {
-        for (let i = 0; arr.length; i++)
+        for (let i = 0; i < arr.length; i++)
             if (arr[i] === key) {
                 return i;
             }
@@ -99,12 +99,15 @@ class Encryption {
     }
     Decrypt(cipher) {
         cipher = Util.decodeBase64(cipher);
-        var ex = this.XoR(cipher, this.key);
-        for (var x = 0; x < 2; x++) {
-            ex = this.dec(ex);
-            ex = this.XoR(ex, this.key);
+        if (cipher) {
+            var ex = this.XoR(cipher, this.key);
+            for (var x = 0; x < 2; x++) {
+                ex = this.dec(ex);
+                ex = this.XoR(ex, this.key);
+            }
+            return ex;
         }
-        return ex;
+        return cipher;
     }
     XoR(to, from) {
         var retval = [];
