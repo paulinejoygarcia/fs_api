@@ -3,7 +3,7 @@ import Const from './Const';
 import Util from './Utilities';
 
 export default class Server {
-    parseAPI(accountSid, auth, body, method, endpoint, subendpoint) {
+    parseAPI(accountSid, auth, body, method, endpoint, subendpoint, ipAddress) {
         let info = Util.decodeBase64(auth.replace('Basic ', ''));
         if ((info = info.split(':')).length > 1) {
             let api = info[0];
@@ -14,7 +14,6 @@ export default class Server {
                 apiSecret: 'API_SECRET',
 
             };
-            let ipAddress = '127.0.0.1';
 
             if (exist) {
                 let api = new API(exist, code, ipAddress);
@@ -38,10 +37,20 @@ export default class Server {
                         showWarning('API received invalid Business or API not enabled request. accountSid: %s', accountSid);
                         break;
                 }
+                return {
+                    success: false,
+                    data: 'Endpoint not found'
+                };
             }
-
+            return {
+                success: false,
+                data: 'Account not found'
+            };
         }
-
+        return {
+            success: false,
+            data: 'Invalid authentication'
+        };
     }
 }
 showNotice = Util.showNotice;
