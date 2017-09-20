@@ -2,6 +2,8 @@ import { ENDPOINT, METHOD, MAX_API_LIFETIME, VIDEO_SUB_ENDPOINT } from './Const'
 import { Enc } from './Encryption';
 import moment from 'moment';
 import message from '../message';
+import MessageCtrl from './controller/Message';
+import ScreenshotCtrl from './controller/Screenshot';
 
 
 export default class API {
@@ -59,20 +61,12 @@ export default class API {
                 switch(method){
                     case METHOD.POST:
                         try{
-                            let insertMessage = message.MessageDB.insert({
-                                from: body.from,
-                                to: body.to,
-                                body: body.body,
-                                attachment: body.attachment,
-                                type: "message",
-                                createdDt: new Date(),
-                            });
-                            if(insertMessage)
-                                return {
-                                    "success": true,
-                                    "id": insertMessage
-                                };
-                            else server.showError('end point[%s]: %s.', ENDPOINT.MESSAGE, insertMessage);
+                            const ctrl = null;
+                            //const ctrl = new MessageCtrl(this.request, this.urlParams);
+                            let res = ctrl.insert();
+                            if(res.success)
+                                return res;
+                            else server.showError('end point[%s]: %s.', ENDPOINT.MESSAGE, res);
                         }catch(err){
                             server.showError('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
                         }
@@ -102,20 +96,12 @@ export default class API {
                         switch(this.subEndpoint){
                             case VIDEO_SUB_ENDPOINT.SCREENSHOTS:
                                 try{
-                                    let insertMessage = message.MessageDB.insert({
-                                        from: body.from,
-                                        to: body.to,
-                                        body: body.body,
-                                        attachment: body.attachment,
-                                        type: "message",
-                                        createdDt: new Date(),
-                                    });
-                                    if(insertMessage)
-                                        return {
-                                            "success": true,
-                                            "id": insertMessage
-                                        };
-                                    else server.showError('end point[%s]: %s.', ENDPOINT.VIDEO, insertMessage);
+                                    const ctrl = null;
+                                    // const ctrl = new ScreenshotCtrl(this.request, this.urlParams);
+                                    let res = ctrl.insert();
+                                    if(res.success)
+                                        return res;
+                                    else server.showError('end point[%s]: %s.', ENDPOINT.VIDEO, res);
                                 }catch(err){
                                     server.showError('end point[%s]: %s.', ENDPOINT.VIDEO, err.message);
                                 }
