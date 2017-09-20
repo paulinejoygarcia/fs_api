@@ -21,10 +21,8 @@
         "pass": ""
     },
     "mm4": {
-        "bandwidth": {
-            "host": "",
-            "port": ""
-        }
+        "host": "",
+        "port": 0
     },
     "pricing": {
         "sms": {

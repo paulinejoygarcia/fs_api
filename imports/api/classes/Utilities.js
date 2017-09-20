@@ -329,5 +329,11 @@ class Utilities {
             };
         }
     }
+    getIP(request) {
+        return request.headers['x-forwarded-for'] ||
+            request.connection.remoteAddress ||
+            request.socket.remoteAddress ||
+            request.connection.socket.remoteAddress;
+    }
 }
 export default Util = new Utilities();
