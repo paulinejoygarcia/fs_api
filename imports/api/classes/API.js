@@ -38,4 +38,24 @@ export default class API {
             }
         };
     }
+	
+	getCalls() {
+		console.log(this.account.accountId);
+		//this.account.accountId
+        return {
+            success: true,
+            data: [
+				{
+					"_id" : ObjectId("59c17bc523a20127c5744578"),
+					"call_start" : 1505852207.0,
+					"caller_id" : "12023041949 < 12023041949>",
+					"called_number" : "+12023041949",
+					"duration" : 40,
+					"disposition" : "NORMAL_CLEARING",
+					"price" : 0.006,
+					"call_id" : "d3a7e166-3841-4a04-b5f5-c859cf1b8cffSTANDARD_13",
+				}
+			]
+        };
+    }
 }

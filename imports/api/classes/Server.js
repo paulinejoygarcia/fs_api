@@ -34,6 +34,10 @@ export default class Server {
                         }
                         break;
                     }
+					case Const.API_ENDPOINT.VOICE: {
+                        let calls = api.getCalls();
+                        return { calls };
+                    }
                     default:
                         showWarning('API received invalid Business or API not enabled request. accountSid: %s', accountSid);
                         break;
