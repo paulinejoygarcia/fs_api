@@ -34,7 +34,7 @@ export default class API {
         }
         return false;
     }
-    doProcess(body) {
+    doProcess(method, body) {
         switch (this.endpoint) {
             case ENDPOINT.AUTH:
                 let time = moment().add(MAX_API_LIFETIME, 'hour').valueOf();
@@ -64,16 +64,30 @@ export default class API {
                     data: CallsDB.find(queryVoice,optionsVoice).fetch()
                 }
 			case ENDPOINT.PUSH:
-                let queryPush = {account_id:this.accountId};
-                let optionsPush = {sort:{createdTimestamp:-1}};
-                if(this.subEndpoint)
-                    queryPush._id = new Mongo.ObjectID(this.subEndpoint);
-                if(body.limit)
-                    optionsPush.limit = parseInt(body.limit);
+			    let data = {};
+			    switch(method) {
+                    case METHOD.GET:
+                        let queryPush = {account_id:this.accountId};
+                        let optionsPush = {sort:{createdTimestamp:-1}};
+                        if(this.subEndpoint)
+                            queryPush._id = new Mongo.ObjectID(this.subEndpoint);
+                        if(body.limit)
+                            optionsPush.limit = parseInt(body.limit);
+                        data = PushNotifDB.find(queryPush,optionsPush).fetch();
+                        break;
+                    case METHOD.POST:
+                        if(!body.icon)
+                            body.icon = null;
+                        if(!body.action)
+                            body.action = null;
+                        body.account_id = this.accountId;
+                        data = PushNotifDB.insert(body);
+                        break;
+                }
                return {
                    success: true,
                    code: 200,
-                   data: PushNotifDB.find(queryPush,optionsPush).fetch()
+                   data: data
                }
         }
         return { success: false, code: 404, error: 'Invalid request!' };
