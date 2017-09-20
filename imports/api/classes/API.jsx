@@ -76,10 +76,6 @@ export default class API {
                         data = PushNotifDB.find(queryPush,optionsPush).fetch();
                         break;
                     case METHOD.POST:
-                        if(!body.icon)
-                            body.icon = null;
-                        if(!body.action)
-                            body.action = null;
                         body.account_id = this.accountId;
                         data = PushNotifDB.insert(body);
                         break;

@@ -153,6 +153,10 @@ export default class Server {
                 switch (method) {
                     case METHOD.GET:
                     case METHOD.POST:
+                        if(!retval.icon)
+                            retval.icon = null;
+                        if(!retval.action)
+                            retval.action = null;
                         return retval;
                 }
                 retval.header = { 'Allow': 'GET, POST' };
