@@ -47,6 +47,15 @@ class Joi {
         return type;
     }
 
+    object(isRequired = false) {
+        let type = npmJoi.object();
+
+        if (isRequired)
+            type = type.required();
+
+        return type;
+    }
+
     validate(object, schema) {
         let result = npmJoi.validate(object, npmJoi.object().keys(schema), {
             abortEarly: true,

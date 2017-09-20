@@ -2,7 +2,13 @@ export const MAX_API_LIFETIME = 4; // 4 hours
 
 export const ENDPOINT = {
     AUTH: 'auth',
-    APP: 'app'
+    APP: 'app',
+    MESSAGE: 'message',
+    VIDEO: 'video',
+};
+
+export const VIDEO_SUB_ENDPOINT = {
+    SCREENSHOTS: 'screenshots',
 };
 
 export const METHOD = {

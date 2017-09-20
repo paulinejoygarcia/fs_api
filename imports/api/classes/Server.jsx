@@ -1,7 +1,7 @@
 import Util from './Utilities';
 import API from './API';
 import { ENDPOINT, METHOD } from './Const';
-
+import Joi from './Joi';
 export default class Server {
     constructor() {
     }
@@ -28,7 +28,6 @@ export default class Server {
             if (data.success) {
                 let result = null;
                 let api = new API(accountSid, auth.api, auth.secret, data.body.accessCode, ipAddress);
-
                 if (endpoint !== ENDPOINT.AUTH && !api.checkAccessCode()) {
                     Util.affixResponse(response, 403, {
                         'Content-Type': 'application/json',
@@ -40,7 +39,7 @@ export default class Server {
                 }
 
                 api.setEndpoint(endpoint, subEndpoint, extEndpoint);
-                result = api.doProcess(data.body);
+                result = api.doProcess(request.method, data.body);
                 data = { ...data, ...result };
                 retval = { ...retval, ...result };
             }
@@ -134,6 +133,62 @@ export default class Server {
                         return retval;
                 }
                 retval.header = { 'Allow': 'GET, POST, PUT' };
+                retval.code = 405; // Method not allowed
+                retval.error = 'Method not allowed!';
+                retval.success = false;
+                break;
+            case ENDPOINT.MESSAGE:
+                switch (method) {
+                    case METHOD.GET:
+                        return retval;
+                    case METHOD.POST:
+                        let to = retval.body.to || null;
+                        let from = retval.body.from || null;
+                        let body = retval.body.body || null;
+                        let attachment = retval.body.attachment || {};
+                        let schema = {
+                            to: Joi.number(true),
+                            from: Joi.number(true),
+                            body: Joi.string(true),
+                            attachment: Joi.object()
+                        };
+                        let validate = Joi.validate({ to, from, body, attachment }, schema);
+                        if (!validate.valid){
+                            retval.code = 403;
+                            retval.error = validate.data;
+                            retval.success = false;
+                            return retval;
+                        }
+                        return retval;
+                }
+                retval.header = { 'Allow': 'GET, POST' };
+                retval.code = 405; // Method not allowed
+                retval.error = 'Method not allowed!';
+                retval.success = false;
+                break;
+            case ENDPOINT.VIDEO:
+                switch (method) {
+                    case METHOD.POST:
+                        let to = retval.body.to || null;
+                        let from = retval.body.from || null;
+                        let body = retval.body.body || null;
+                        let attachment = retval.body.attachment || null;
+                        let schema = {
+                            to: Joi.number(true),
+                            from: Joi.number(true),
+                            body: Joi.string(true),
+                            attachment: Joi.object(true)
+                        };
+                        let validate = Joi.validate({ to, from, body, attachment }, schema);
+                        if (!validate.valid){
+                            retval.code = 403;
+                            retval.error = validate.data;
+                            retval.success = false;
+                            return retval;
+                        }
+                        return retval;
+                }
+                retval.header = { 'Allow': 'GET' };
                 retval.code = 405; // Method not allowed
                 retval.error = 'Method not allowed!';
                 retval.success = false;
