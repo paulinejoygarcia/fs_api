@@ -1,5 +1,6 @@
 import { Enc } from './Encryption';
 import moment from 'moment';
+import Joi from './Joi';
 
 export default class API {
     constructor(account, code, ipAddress) {
@@ -29,12 +30,24 @@ export default class API {
     }
 
     test(param1, param2) {
+        let schema = {
+            param1: Joi.string(true, 'alphanum', ['test01', 'test02'], ['test03']),
+            param2: Joi.number(true)
+        };
+        let validate = Joi.validate({ param1, param2 }, schema);
+        if (!validate.valid)
+            return {
+                success: false,
+                data: validate.data
+            };
+
         return {
             success: true,
             data: {
                 test: 'Test DATA',
                 param1,
-                param2
+                param2,
+                validate
             }
         };
     }
