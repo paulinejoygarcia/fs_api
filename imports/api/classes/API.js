@@ -38,15 +38,15 @@ export default class API {
             }
         };
     }
-	
-	getCalls() {
-		console.log(this.account.accountId);
+
+	getCalls(params) {
 		//this.account.accountId
+        //this.astpp.callList(params.limit || 20);
         return {
             success: true,
             data: [
 				{
-					"_id" : ObjectId("59c17bc523a20127c5744578"),
+					"_id" : "59c17bc523a20127c5744578",
 					"call_start" : 1505852207.0,
 					"caller_id" : "12023041949 < 12023041949>",
 					"called_number" : "+12023041949",
@@ -56,6 +56,30 @@ export default class API {
 					"call_id" : "d3a7e166-3841-4a04-b5f5-c859cf1b8cffSTANDARD_13",
 				}
 			]
+        };
+    }
+
+    getPushNotifications(params) {
+        //this.account.accountId
+        //this.astpp.callList(params.limit || 20);
+        return {
+            success: true,
+            data: [
+                {
+                    "_id" : "59c17d9f23a20127c574457a",
+                    "registration_id" : "ek4QJcWc80I:APA91bE...",
+                    "title" : "Sample Title 2",
+                    "body" : "Sample Body 2",
+                    "server_key" : "AAAAFEC8mk4:APA91bGuaGJSUufIzbBtOWyCH...",
+                    "icon" : null,
+                    "action" : null,
+                    "priority" : 10,
+                    "message_id" : "0:1505327862064389%31bd1c9631bd1c96",
+                    "price" : 0.001,
+                    "created_timestamp" : 1505852743.0,
+                    "account_id" : "1978198228"
+                }
+            ]
         };
     }
 }
