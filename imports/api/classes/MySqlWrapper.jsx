@@ -23,7 +23,7 @@ export default class MySqlWrapper {
             this.connection.query({ sql: query, timeout: timeout }, values,
                 function (error, results, fields) {
                     if (error) {
-                        showDebug('SQL ERROR: %s (%s)', error.sqlMessage, error.sqlState);
+                        showDebug('SQL ERROR: %s (%s) query: `%s`', error.sqlMessage, error.sqlState, query);
                         future.return(false);
                     } else {
                         future.return(results);
@@ -46,7 +46,7 @@ export default class MySqlWrapper {
             let future = new npmFuture();
             this.connection.query(`INSERT INTO ${table} SET ?`, values, function (error, results, fields) {
                 if (error) {
-                    showDebug('SQL ERROR: %s (%s)', error.sqlMessage, error.sqlState);
+                    showDebug('SQL ERROR: %s (%s) query: `%s`', error.sqlMessage, error.sqlState, query);
                     future.return(false);
                 } else {
                     future.return(results.insertId);
@@ -64,7 +64,7 @@ export default class MySqlWrapper {
             if (where) query += ` WHERE ${where}`;
             this.connection.query(query, values, function (error, results, fields) {
                 if (error) {
-                    showDebug('SQL ERROR: %s (%s)', error.sqlMessage, error.sqlState);
+                    showDebug('SQL ERROR: %s (%s) query: `%s`', error.sqlMessage, error.sqlState, query);
                     future.return(false);
                 } else {
                     future.return(results.changedRows);

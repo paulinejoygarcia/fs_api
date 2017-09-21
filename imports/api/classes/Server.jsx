@@ -177,6 +177,12 @@ export default class Server {
             case ENDPOINT.APP:
                 switch (method) {
                     case METHOD.PUT:
+                        if (!params.sub || !params.sub.trim()) {
+                            retval.code = 404;
+                            retval.error = 'Missing `id` access denied!';
+                            retval.success = false;
+                            return retval;
+                        }
                     case METHOD.POST:
                         break;
                 }

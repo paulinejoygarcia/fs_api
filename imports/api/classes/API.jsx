@@ -7,7 +7,8 @@ export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
         this.api = api;
         this.secret = secret;
-        this.accountId = accountId;
+        this.accountId = accountId; // api account id
+        this.accountID = null; // account id
         this.accessCode = accessCode;
         this.ipAddress = ipAddress;
         this.endpoint = this.subEndpoint = this.extEndpoint = ENDPOINT.AUTH;
@@ -34,6 +35,7 @@ export default class API {
                 if (result) {
                     let time = parseInt(code[2]);
                     let ipAddress = this.enc.XoR(code[3], time);
+                    this.accountID = result.id;
                     if (accountId === this.accountId && this.secret === apiSecret && this.ipAddress === ipAddress) {
                         return (time - moment().valueOf()) > 0;
                     }
@@ -68,40 +70,67 @@ export default class API {
                 }
             }
             case ENDPOINT.APP:
-                let values = {
-                    accountid: '13',
-                    friendly_name: 'test4',
-                    call_url: 'http://acme.com/call',
-                    call_method: 'POST',
-                    msg_url: 'http://acme.com/msg',
-                    msg_method: 'POST',
-                    fax_url: 'http://acme.com/fax',
-                    fax_method: 'POST'
-                };
-                let insert = this.databaseConnection.insert('fs_applications', values);
+                let data = [];
+                switch (method) {
+                    case METHOD.GET: {
+                        if (this.subEndpoint) {
+                            let query = "SELECT * FROM `fs_applications` WHERE `id` = ? AND `retired` = 0";
+                            let result = this.databaseConnection.selectOne(query, this.subEndpoint);
+                            if (result) {
+                                data.push({
+                                    "id": result.id,
+                                    "friendly_name": result.friendly_name || '',
+                                    "call_url": result.call_url || '',
+                                    "call_method": result.call_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                    "call_fb_url": result.call_fb_url || '',
+                                    "call_fb_method": result.call_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                    "msg_url": result.msg_url || '',
+                                    "msg_method": result.msg_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                    "msg_fb_url": result.msg_fb_url || '',
+                                    "msg_fb_method": result.msg_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                    "fax_url": result.fax_url || '',
+                                    "fax_method": result.fax_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                    "fax_fb_url": result.fax_fb_url || '',
+                                    "fax_fb_method": result.fax_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET
+                                });
+                            } else
+                                data.push('APP NOT FOUND');
+                        } else {
+                            console.log('id:', this.accountID);
+                            let query = "SELECT * FROM `fs_applications` WHERE `accountid` = ? AND `retired` = 0";
+                            let results = this.databaseConnection.select(query, this.accountID);
+                            if (results) {
+                                results.forEach((result) => {
+                                    data.push({
+                                        "id": result.id,
+                                        "friendly_name": result.friendly_name || '',
+                                        "call_url": result.call_url || '',
+                                        "call_method": result.call_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                        "call_fb_url": result.call_fb_url || '',
+                                        "call_fb_method": result.call_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                        "msg_url": result.msg_url || '',
+                                        "msg_method": result.msg_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                        "msg_fb_url": result.msg_fb_url || '',
+                                        "msg_fb_method": result.msg_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                        "fax_url": result.fax_url || '',
+                                        "fax_method": result.fax_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                        "fax_fb_url": result.fax_fb_url || '',
+                                        "fax_fb_method": result.fax_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET
+                                    });
+                                });
+                            }
+                        }
+                    }
+                        break;
+                    case METHOD.POST:
+                    case METHOD.PUT: {
 
-                let query = 'SELECT * FROM fs_applications WHERE id = ?';
-                let selectOne = this.databaseConnection.selectOne(query, [insert]);
-
-                values = {
-                    friendly_name: 'test4-edited',
-                    call_method: 'GET',
-                    msg_method: 'POST',
-                    fax_method: 'PUT'
-                };
-                let update = this.databaseConnection.update('fs_applications', values, `id=${insert}`);
-
-                let select = this.databaseConnection.select(query, [insert]);
-
+                    }
+                }
                 return {
                     success: true,
                     code: 200,
-                    data: {
-                        insert,
-                        selectOne,
-                        update,
-                        select
-                    }
+                    data: data
                 }
                 break;
 
@@ -110,7 +139,7 @@ export default class API {
                     success: true,
                     code: 200,
                     data: 'number endpoint'
-                }    
+                }
                 break;
 
             case ENDPOINT.SOCIAL:
@@ -119,7 +148,7 @@ export default class API {
                     code: 200,
                     data: 'social endpoint'
                 }
-                break;  
+                break;
         }
         return { success: false, code: 404, error: 'Invalid request!' };
     }
