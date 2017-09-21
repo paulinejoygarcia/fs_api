@@ -32,7 +32,7 @@ export default class API {
         }
         return false;
     }
-    doProcess(body) {
+    doProcess(method, body) {
         switch (this.endpoint) {
             case ENDPOINT.AUTH:
                 let time = moment().add(MAX_API_LIFETIME, 'hour').valueOf();

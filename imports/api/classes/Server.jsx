@@ -1,9 +1,34 @@
-import Util from './Utilities';
 import API from './API';
+import mysql from 'mysql';
+import Util from './Utilities';
 import { ENDPOINT, METHOD } from './Const';
 
 export default class Server {
     constructor() {
+        this.dbConnection = null;
+    }
+    /**
+     * Connect to MySQL Server
+     */
+    onConnectMySQL() {
+        if (!Meteor.settings.astpp || !Meteor.settings.astpp.db) {
+            showError("No ASTPP db configuration found!");
+            return;
+        }
+        showStatus('Connecting to MySql Server... ip:`%s`', Meteor.settings.astpp.db.host || 'localhost');
+        (this.dbConnection = mysql.createConnection({
+            host: Meteor.settings.astpp.db.host || 'localhost',
+            user: Meteor.settings.astpp.db.user || 'root',
+            password: Meteor.settings.astpp.db.password || '',
+            database: Meteor.settings.astpp.db.database || 'admin',
+            port: Meteor.settings.astpp.db.port || 3306
+        })).connect((err) => {
+            if (err) {
+                showError('Cannot connect to db server. err: `%s`', err.message);
+                return;
+            }
+            showStatus('Successfully connected to db server. threadId: `%s`', this.dbConnection.threadId);
+        });
     }
     /**
      * Process request received
@@ -40,7 +65,7 @@ export default class Server {
                 }
 
                 api.setEndpoint(endpoint, subEndpoint, extEndpoint);
-                result = api.doProcess(data.body);
+                result = api.doProcess(request.method, data.body);
                 data = { ...data, ...result };
                 retval = { ...retval, ...result };
             }
