@@ -1,7 +1,14 @@
 {
     "astpp": {
         "apiKey": "",
-        "apiSecret": ""
+        "apiSecret": "",
+        "db":{
+            "host": "104.131.46.31",
+            "port": "3306",
+            "user": "tmqDevs",
+            "password": "y_CHudrapHet8utu",
+            "database": "astpp"
+        }
     },
     "freeswitch": {
         "ip": "",

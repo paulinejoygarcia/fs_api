@@ -5,7 +5,8 @@ import {PushNotifDB} from '../pushNotifications';
 import moment from 'moment';
 import CallCtrl from './controller/Call';
 import PushNotifCtrl from './controller/PushNotif';
-
+import mysql from 'mysql';
+let Future = Npm.require('fibers/future');
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
         this.api = api;
@@ -56,24 +57,58 @@ export default class API {
                     }
                 }
 			case ENDPOINT.VOICE:
-                const ctrl = null;
+                let data = [];
+                let future = new Future();
+                let mysqlConnection = mysql.createConnection(Meteor.settings.astpp.db);
+                mysqlConnection.connect(function(err) {
+                    if (err) {
+                        console.error('error connecting in ASTPP MySQL: ' + err.stack);
+                        return;
+                    }
+                    console.log('connected in ASTPP MySQL as id ' + mysqlConnection.threadId);
+                });
+                mysqlConnection.query('SELECT callstart as call_start,callerid as caller_id,' +
+                    'callednum as called_number,billseconds as duration,disposition,debit as price,' +
+                    'uniqueid as call_id FROM cdrs WHERE accountid = "'+ this.accountId +
+                    '" ORDER BY callstart DESC' + (body.limit?' LIMIT '+body.limit:''), function (error, results, fields) {
+                    if (error) throw error;
+                    data = results;
+                    future.return({
+                        success: true,
+                        code: 200,
+                        data: data
+                    });
+                });
+                return future.wait();
                 //const ctrl = new Controller(this.request, this.urlParams);
                 //let queryVoice = {account_id:this.accountId};
 				//let optionsVoice = {};
 				//if(body.limit)
                 //    optionsVoice.limit = parseInt(body.limit);
                 //CallsDB.find(queryVoice,optionsVoice).fetch()
-                return {
-                    success: true,
-                    code: 200,
-                    data: ctrl.list()
-                }
 			case ENDPOINT.PUSH:
-			    let data = {};
-			    const ctrl = null;
-                //const ctrl = new Controller(this.request, this.urlParams);
 			    switch(method) {
                     case METHOD.GET:
+                        mysqlConnection = mysql.createConnection(Meteor.settings.astpp.db);
+                        mysqlConnection.connect(function(err) {
+                            if (err) {
+                                console.error('error connecting in ASTPP MySQL: ' + err.stack);
+                                return;
+                            }
+                            console.log('connected in ASTPP MySQL as id ' + mysqlConnection.threadId);
+                        });
+                        mysqlConnection.query('SELECT callstart as call_start,callerid as caller_id,' +
+                            'callednum as called_number,billseconds as duration,disposition,debit as price,' +
+                            'uniqueid as call_id FROM cdrs WHERE accountid = "'+ this.accountId +
+                            '" ORDER BY callstart DESC' + (body.limit?' LIMIT '+body.limit:''), function (error, results, fields) {
+                            if (error) throw error;
+                            data = results;
+                            future.return({
+                                success: true,
+                                code: 200,
+                                data: data
+                            });
+                        });
                         // let queryPush = {account_id:this.accountId};
                         // let optionsPush = {sort:{createdTimestamp:-1}};
                         // if(this.subEndpoint)
@@ -81,7 +116,8 @@ export default class API {
                         // if(body.limit)
                         //     optionsPush.limit = parseInt(body.limit);
                         // data = PushNotifDB.find(queryPush,optionsPush).fetch();
-                        data = ctrl.list();
+                        //data = ctrl.list();
+                        data = [];
                         break;
                     case METHOD.POST:
                         //body.account_id = this.accountId;
