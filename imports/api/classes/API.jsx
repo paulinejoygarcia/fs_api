@@ -1,11 +1,7 @@
 import { ENDPOINT, METHOD, MAX_API_LIFETIME } from './Const';
 import { Enc } from './Encryption';
-import {CallsDB} from '../calls';
 import {PushNotifDB} from '../pushNotifications';
 import moment from 'moment';
-import CallCtrl from './controller/Call';
-import PushNotifCtrl from './controller/PushNotif';
-import mysql from 'mysql';
 let Future = Npm.require('fibers/future');
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
@@ -92,21 +88,15 @@ export default class API {
                 }
 			case ENDPOINT.VOICE:
                 let data = [];
-                let future = new Future();
-                dbConnection.query('SELECT callstart as call_start,callerid as caller_id,' +
+                query = 'SELECT callstart as call_start,callerid as caller_id,' +
                     'callednum as called_number,billseconds as duration,disposition,debit as price,' +
                     'uniqueid as call_id FROM cdrs WHERE accountid = "'+ this.accountId +
-                    '" ORDER BY callstart DESC' + (body.limit?' LIMIT '+body.limit:''), function (error, results, fields) {
-                    if (error) throw error;
-                    data = results;
-                    future.return({
-                        success: true,
-                        code: 200,
-                        data: data
-                    });
-                });
-                return future.wait();
-                //const ctrl = new Controller(this.request, this.urlParams);
+                    '" ORDER BY callstart DESC' + (body.limit?' LIMIT '+body.limit:'');
+                return {
+                    success: true,
+                    code: 200,
+                    data: this.databaseConnection.select(query)
+                }
                 //let queryVoice = {account_id:this.accountId};
 				//let optionsVoice = {};
 				//if(body.limit)
@@ -122,31 +112,34 @@ export default class API {
                         if(body.limit)
                             optionsPush.limit = parseInt(body.limit);
                         data = PushNotifDB.find(queryPush,optionsPush).fetch();
-                        break;
+                        return {
+                            success: true,
+                            code: 200,
+                            data: data
+                        }
                     case METHOD.POST:
-                        //body.account_id = this.accountId;
-                        //PushNotifDB.insert(body);
-                        // dbConnection.query('SELECT callstart as call_start,callerid as caller_id,' +
-                        //     'callednum as called_number,billseconds as duration,disposition,debit as price,' +
-                        //     'uniqueid as call_id FROM cdrs WHERE accountid = "'+ this.accountId +
-                        //     '" ORDER BY callstart DESC' + (body.limit?' LIMIT '+body.limit:''), function (error, results, fields) {
-                        //     if (error) throw error;
-                        //     data = results;
-                        //     future.return({
-                        //         success: true,
-                        //         code: 200,
-                        //         data: data
-                        //     });
-                        // });
-                        // data = future.wait();
-                        data = PushNotifDB.insert(body);
+                        query = 'SELECT balance from accounts WHERE number = "'+ this.accountId + '"';
+                        let select = dbConnection.select(query);
+                        if(select.length > 0) {
+                            if(parseFloat(select[0].balance) >= parseFloat(body.price)) {}
+                            else return {
+                                success: false,
+                                data: 'Insufficient funds'
+                            };
+                        } else {
+                            return {
+                                success: false,
+                                data: 'Could not retrieve account balance'
+                            };
+                        }
+                        body.account_id = this.accountId;
+                        return {
+                            success: false,
+                            code:200,
+                            data: PushNotifDB.insert(body)
+                        };
                         break;
                 }
-               return {
-                   success: true,
-                   code: 200,
-                   data: data
-               }
         }
         return { success: false, code: 404, error: 'Invalid request!' };
     }
