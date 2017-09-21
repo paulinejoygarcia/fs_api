@@ -96,7 +96,6 @@ export default class API {
                             } else
                                 data.push('APP NOT FOUND');
                         } else {
-                            console.log('id:', this.accountID);
                             let query = "SELECT * FROM `fs_applications` WHERE `accountid` = ? AND `retired` = 0";
                             let results = this.databaseConnection.select(query, this.accountData.id);
                             if (results) {
