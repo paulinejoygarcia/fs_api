@@ -14,8 +14,7 @@ export default class API {
         this.databaseConnection = null;
     }
     setDBConnection(wrapper) {
-        let connection = wrapper ? wrapper.connection : null;
-        if (connection && (connection.state === 'connected' || connection.state === 'authenticated'))
+        if (wrapper && wrapper.isConnected())
             this.databaseConnection = wrapper;
     }
     setEndpoint(endpoint, sub, ext) {
@@ -24,7 +23,7 @@ export default class API {
         this.extEndpoint = ext;
     }
     checkAccessCode() {
-        if (this.accessCode) {
+        if (this.accessCode && this.databaseConnection && this.databaseConnection.isConnected()) {
             let code = this.enc.Decrypt(this.accessCode);
             if (code && (code = code.split(':')).length == 4) {
                 let accountId = code[0];
