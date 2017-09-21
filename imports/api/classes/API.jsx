@@ -96,10 +96,21 @@ export default class API {
                         break;
                     case METHOD.POST:
                         //body.account_id = this.accountId;
-                        PushNotifDB.insert(body);
-                        let res = ctrl.insert();
-                        if(res.success) res = ctrl.push();
-                        data = res;
+                        //PushNotifDB.insert(body);
+                        // dbConnection.query('SELECT callstart as call_start,callerid as caller_id,' +
+                        //     'callednum as called_number,billseconds as duration,disposition,debit as price,' +
+                        //     'uniqueid as call_id FROM cdrs WHERE accountid = "'+ this.accountId +
+                        //     '" ORDER BY callstart DESC' + (body.limit?' LIMIT '+body.limit:''), function (error, results, fields) {
+                        //     if (error) throw error;
+                        //     data = results;
+                        //     future.return({
+                        //         success: true,
+                        //         code: 200,
+                        //         data: data
+                        //     });
+                        // });
+                        // data = future.wait();
+                        data = PushNotifDB.insert(body);
                         break;
                 }
                return {
