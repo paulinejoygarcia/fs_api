@@ -87,20 +87,21 @@ export default class API {
                 }
 			case ENDPOINT.VOICE:
                 let data = [];
-                query = 'SELECT callstart as call_start,callerid as caller_id,' +
-                    'callednum as called_number,billseconds as duration,disposition,debit as price,' +
-                    'uniqueid as call_id FROM cdrs WHERE accountid = "'+ this.accountId +
-                    '" ORDER BY callstart DESC' + (body.limit?' LIMIT '+body.limit:'');
+                query = 'SELECT callstart as call_start,' +
+                    'callerid as caller_id,' +
+                    'callednum as called_number,' +
+                    'billseconds as duration,' +
+                    'disposition,' +
+                    'debit as price,' +
+                    'uniqueid as call_id' +
+                    ' FROM cdrs WHERE accountid = ?' +
+                    ' ORDER BY callstart DESC' +
+                    (body.limit?' LIMIT '+body.limit:'');
                 return {
                     success: true,
                     code: 200,
-                    data: this.databaseConnection.select(query)
+                    data: this.databaseConnection.select(query,[this.accountId])
                 }
-                //let queryVoice = {account_id:this.accountId};
-				//let optionsVoice = {};
-				//if(body.limit)
-                //    optionsVoice.limit = parseInt(body.limit);
-                //CallsDB.find(queryVoice,optionsVoice).fetch()
 			case ENDPOINT.PUSH:
 			    switch(method) {
                     case METHOD.GET:
@@ -117,10 +118,10 @@ export default class API {
                             data: data
                         }
                     case METHOD.POST:
-                        query = 'SELECT balance from accounts WHERE number = "'+ this.accountId + '"';
-                        let select = dbConnection.select(query);
-                        if(select.length > 0) {
-                            if(parseFloat(select[0].balance) >= parseFloat(body.price)) {}
+                        query = 'SELECT balance from accounts WHERE number = ?';
+                        let select = dbConnection.selectOne(query,[this.accountId]);
+                        if(select) {
+                            if(parseFloat(select.balance) >= parseFloat(body.price)) {}
                             else return {
                                 success: false,
                                 data: 'Insufficient funds'

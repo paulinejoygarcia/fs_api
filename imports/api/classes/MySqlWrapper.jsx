@@ -20,10 +20,10 @@ export default class MySqlWrapper {
     select(query, values = [], timeout = 40000) {
         if (this.isConnected()) {
             let future = new npmFuture();
-
-            this.connection.query({ query, timeout }, values,
+            this.connection.query({ sql: query, timeout: timeout }, values,
                 function (error, results, fields) {
                     if (error) {
+                        showDebug('SQL ERROR: %s (%s)', error.sqlMessage, error.sqlState);
                         future.return(false);
                     } else {
                         future.return(results);
