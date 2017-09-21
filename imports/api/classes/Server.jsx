@@ -1,7 +1,7 @@
 import API from './API';
 import MySqlWrapper from './MySqlWrapper';
 import Util from './Utilities';
-import { ENDPOINT, ENDPOINT_LIST, SUBENDPOINT_LIST, METHOD } from './Const';
+import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
 
 export default class Server {
     constructor() {
@@ -124,6 +124,38 @@ export default class Server {
                 break;
         }
 
+        if (ENDPOINT_CHECKPOINT[endpoint]) {
+            if (!(ENDPOINT_CHECKPOINT[endpoint] instanceof Array) && !ENDPOINT_CHECKPOINT[endpoint][params.sub]) { // sub endpoint check
+                retval.code = 404;
+                retval.error = `Endpoint not found! /${endpoint}/${params.sub || ''}/`;
+                retval.success = false;
+            }
+            if (ENDPOINT_CHECKPOINT[endpoint] instanceof Array) { // http method check
+                let found = ENDPOINT_CHECKPOINT[endpoint].filter(method_ => method_ == method);
+                if (!found.length) {
+                    retval.code = 405;
+                    retval.header = { 'Allow': ENDPOINT_CHECKPOINT[endpoint].join(',') };
+                    retval.error = 'Method not allowed!';
+                    retval.success = false;
+                    return retval;
+                }
+            }
+            if (ENDPOINT_CHECKPOINT[endpoint][params.sub] instanceof Array) { // http method check
+                let found = ENDPOINT_CHECKPOINT[endpoint][params.sub].filter(method_ => method_ == method);
+                if (!found.length) {
+                    retval.code = 405;
+                    retval.header = { 'Allow': ENDPOINT_CHECKPOINT[endpoint][params.sub].join(',') };
+                    retval.error = 'Method not allowed!';
+                    retval.success = false;
+                    return retval;
+                }
+            }
+        } else {
+            retval.code = 404; // Request not found    
+            retval.error = `Endpoint not found! /${endpoint}/`;
+            retval.success = false;
+        }
+
         // access code check
         switch (endpoint) {
             case ENDPOINT.AUTH:
@@ -140,44 +172,17 @@ export default class Server {
                 }
         }
 
-        if (ENDPOINT_LIST[endpoint]) {
-            if (!ENDPOINT_LIST[endpoint][method]) {
-                retval.code = 405;
-                retval.header = { 'Allow': Object.keys(ENDPOINT_LIST[endpoint]).join(',') };
-                retval.error = 'Method not allowed!';
-                retval.success = false;
-                return retval;
-            }
-
-            if (SUBENDPOINT_LIST[endpoint]) {
-                let subendpoint = params.sub;
-                if (subendpoint && !SUBENDPOINT_LIST[endpoint][subendpoint]) {
-                    retval.code = 404;
-                    retval.error = `Subendpoint not found: ${subendpoint}`;
-                    retval.success = false;
-                    if (isNaN(params.accountSid)) {
-                        retval.code = 404;
-                        retval.error = 'Account not found!';
-                        retval.success = false;
-                    }
-                    return retval;
+        // data check and sanitation 
+        switch (endpoint) {
+            case ENDPOINT.APP:
+                switch (method) {
+                    case METHOD.PUT:
+                    case METHOD.POST:
+                        break;
                 }
-                if (subendpoint && SUBENDPOINT_LIST[endpoint][subendpoint]) {
-                    if (!SUBENDPOINT_LIST[endpoint][subendpoint][method]) {
-                        retval.code = 405;
-                        retval.header = { 'Allow': Object.keys(SUBENDPOINT_LIST[endpoint][subendpoint]).join(',') };
-                        retval.error = 'Method not allowed!';
-                        retval.success = false;
-                        return retval;
-                    }
-                }
-            }
-        } else {
-            retval.code = 404; // Request not found    
-            retval.error = 'Endpoint not found!';
-            retval.success = false;
+                break;
         }
-        
+
         return retval;
     }
 }
