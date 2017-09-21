@@ -64,7 +64,9 @@ export default class Server {
                     return;
                 }
 
+                api.setDBConnection(this.dbConnection);
                 api.setEndpoint(endpoint, subEndpoint, extEndpoint);
+
                 result = api.doProcess(request.method, data.body);
                 data = { ...data, ...result };
                 retval = { ...retval, ...result };

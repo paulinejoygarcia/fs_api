@@ -11,6 +11,11 @@ export default class API {
         this.ipAddress = ipAddress;
         this.endpoint = this.subEndpoint = this.extEndpoint = ENDPOINT.AUTH;
         this.enc = Enc(this.secret);
+        this.databaseConnetion = null;
+    }
+    setDBConnection(connection) {
+        if (connection && connection.state === 'connected')
+            this.databaseConnetion = connection;
     }
     setEndpoint(endpoint, sub, ext) {
         this.endpoint = endpoint;
