@@ -8,7 +8,7 @@ export default class API {
         this.api = api;
         this.secret = secret;
         this.accountId = accountId; // api account id
-        this.accountID = null; // account id
+        this.accountData = null; // account id
         this.accessCode = accessCode;
         this.ipAddress = ipAddress;
         this.endpoint = this.subEndpoint = this.extEndpoint = ENDPOINT.AUTH;
@@ -30,12 +30,12 @@ export default class API {
             if (code && (code = code.split(':')).length == 4) {
                 let accountId = code[0];
                 let apiSecret = code[1];
-                let query = "SELECT `id` FROM `accounts` WHERE `account_id`=? AND `secret`=?";
+                let query = "SELECT * FROM `accounts` WHERE `account_id`=? AND `secret`=?";
                 let result = this.databaseConnection.selectOne(query, [accountId, apiSecret]);
                 if (result) {
                     let time = parseInt(code[2]);
                     let ipAddress = this.enc.XoR(code[3], time);
-                    this.accountID = result.id;
+                    this.accountData = result;
                     if (accountId === this.accountId && this.secret === apiSecret && this.ipAddress === ipAddress) {
                         return (time - moment().valueOf()) > 0;
                     }
@@ -98,7 +98,7 @@ export default class API {
                         } else {
                             console.log('id:', this.accountID);
                             let query = "SELECT * FROM `fs_applications` WHERE `accountid` = ? AND `retired` = 0";
-                            let results = this.databaseConnection.select(query, this.accountID);
+                            let results = this.databaseConnection.select(query, this.accountData.id);
                             if (results) {
                                 results.forEach((result) => {
                                     data.push({
