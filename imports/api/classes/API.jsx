@@ -14,7 +14,7 @@ export default class API {
         this.databaseConnetion = null;
     }
     setDBConnection(connection) {
-        if (connection && connection.state === 'connected')
+        if (connection && (connection.state === 'connected' || connection.state === 'authenticated'))
             this.databaseConnetion = connection;
     }
     setEndpoint(endpoint, sub, ext) {
