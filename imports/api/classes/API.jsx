@@ -1,5 +1,6 @@
 import { ENDPOINT, METHOD, MAX_API_LIFETIME } from './Const';
 import { Enc } from './Encryption';
+import Util from './Utilities';
 import moment from 'moment';
 
 export default class API {
@@ -28,10 +29,14 @@ export default class API {
             if (code && (code = code.split(':')).length == 4) {
                 let accountId = code[0];
                 let apiSecret = code[1];
-                let time = parseInt(code[2]);
-                let ipAddress = code[3];
-                if (accountId === this.accountId && this.secret === apiSecret && this.ipAddress === ipAddress) {
-                    return (time - moment().valueOf()) > 0;
+                let query = "SELECT `id` FROM `accounts` WHERE `account_id`=? AND `secret`=?";
+                let result = this.databaseConnection.selectOne(query, [accountId, apiSecret]);
+                if (result) {
+                    let time = parseInt(code[2]);
+                    let ipAddress = this.enc.XoR(code[3], time);
+                    if (accountId === this.accountId && this.secret === apiSecret && this.ipAddress === ipAddress) {
+                        return (time - moment().valueOf()) > 0;
+                    }
                 }
             }
         }
@@ -39,15 +44,29 @@ export default class API {
     }
     doProcess(method, body) {
         switch (this.endpoint) {
-            case ENDPOINT.AUTH:
-                let time = moment().add(MAX_API_LIFETIME, 'hour').valueOf();
-                return {
-                    success: true,
-                    code: 200,
-                    data: {
-                        code: this.enc.Encrypt([this.accountId, this.secret, time, this.ipAddress].join(':'))
+            case ENDPOINT.AUTH: {
+                let query = "SELECT `api`, `secret` FROM `accounts` WHERE `account_id`=?";
+                let result = this.databaseConnection.selectOne(query, this.accountId);
+                if (result) {
+                    let testCipher = Util.encodeBase64(this.enc.XoR(this.api, this.accountId));
+                    if (testCipher == result.secret && result.secret == this.secret) {
+                        let time = moment().add(MAX_API_LIFETIME, 'hour').valueOf();
+                        let encIp = this.enc.XoR(this.ipAddress, time);
+                        return {
+                            success: true,
+                            code: 200,
+                            data: {
+                                code: this.enc.Encrypt([this.accountId, result.secret, time, encIp].join(':'))
+                            }
+                        }
                     }
                 }
+                return {
+                    success: false,
+                    code: 404,
+                    error: 'Account not found!'
+                }
+            }
             case ENDPOINT.APP:
                 let values = {
                     accountid: '13',

@@ -142,6 +142,11 @@ export default class Server {
         switch (endpoint) {
             case ENDPOINT.AUTH:
                 if (method === METHOD.GET) {
+                    if (isNaN(params.accountSid)) {
+                        retval.code = 404;
+                        retval.error = 'Account not found!';
+                        retval.success = false;
+                    }
                     return retval;
                 }
                 retval.header = { 'Allow': 'GET' };

@@ -111,12 +111,17 @@ class Encryption {
     }
     XoR(to, from) {
         var retval = [];
-        for (var i = 0; i < to.length; i++) {
-            if (to[i] != from[i % from.length])
-                retval[i] = String.fromCharCode((to.charCodeAt(i) ^ from.charCodeAt(i % from.length)));
-            else
-                retval[i] = to[i];
+        if (to && from) {
+            to = to.toString();
+            from = from.toString();
+            for (var i = 0; i < to.length; i++) {
+                if (to[i] != from[i % from.length])
+                    retval[i] = String.fromCharCode((to.charCodeAt(i) ^ from.charCodeAt(i % from.length)));
+                else
+                    retval[i] = to[i];
+            }
+            return retval.join('');
         }
-        return retval.join('');
+        return to;
     };
 }
