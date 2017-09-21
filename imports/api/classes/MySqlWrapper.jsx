@@ -2,80 +2,75 @@ import mysql from 'mysql';
 import npmFuture from 'fibers/future';
 
 export default class MySqlWrapper {
-    constructor(host, user, password, database, port = 3306) {
-        const that = this;
-
-        let fut = new npmFuture();
-
+    constructor(host = 'localhost', user = 'root', password = '', database = 'admin', port = 3306) {
         showStatus('Connecting to MySql Server... ip:`%s`', host || 'localhost');
 
-        let connection = mysql.createConnection({ host, user, password, database, port });
-        connection.connect(function (err) {
+        this.connection = mysql.createConnection({ host, user, password, database, port });
+        this.connection.connect((err) => {
             if (err) {
                 showError('Cannot connect to db server. err: `%s`', err.message);
-                fut.return(false);
                 return;
             }
-
-            showStatus('Successfully connected to db server. threadId: `%s`', connection.threadId);
-            fut.return(true);
+            showStatus('Successfully connected to db server. threadId: `%s`', this.connection.threadId);
         });
-
-        if (fut.wait()) {
-            this.connection = connection;
-        }
     }
+    isConnected() {
+        return this.connection && this.connection.threadId && (this.connection.state === 'connected' || this.connection.state === 'authenticated');
+    }
+    select(query, values = [], timeout = 40000) {
+        if (this.isConnected()) {
+            let future = new npmFuture();
 
-    select(sql, values = [], timeout = 40000) {
-        if (this.connection) {
-            let fut = new npmFuture();
-            this.connection.query({ sql, timeout }, values,
+            this.connection.query({ query, timeout }, values,
                 function (error, results, fields) {
                     if (error) {
-                        fut.return(false);
+                        future.return(false);
                     } else {
-                        fut.return(results);
+                        future.return(results);
                     }
                 }
             );
-
-            return fut.wait();
+            return future.wait();
         }
+        showWarning('Cannot use `%` db server is close.', 'SELECT');
+        return null;
     }
-
-    selectOne(sql, values = [], timeout = 40000) {
-        let result = this.select(sql, values, timeout);
+    selectOne(query, values = [], timeout = 40000) {
+        let result = this.select(query, values, timeout);
         if (result && result.length)
             return result[0];
+        return null;
     }
-
     insert(table, values) {
-        if (this.connection) {
-            let fut = new npmFuture();
+        if (this.isConnected()) {
+            let future = new npmFuture();
             this.connection.query(`INSERT INTO ${table} SET ?`, values, function (error, results, fields) {
                 if (error) {
-                    fut.return(false);
+                    future.return(false);
                 } else {
-                    fut.return(results.insertId);
+                    future.return(results.insertId);
                 }
             });
-            return fut.wait();
+            return future.wait();
         }
+        showWarning('Cannot use `%` db server is close.', 'INSERT');
+        return null;
     }
-
     update(table, values, where) {
-        if (this.connection) {
-            let fut = new npmFuture();
-            let sql = `UPDATE ${table} SET ?`;
-            if (where) sql += ` WHERE ${where}`;
-            this.connection.query(sql, values, function (error, results, fields) {
+        if (this.isConnected()) {
+            let future = new npmFuture();
+            let query = `UPDATE ${table} SET ?`;
+            if (where) query += ` WHERE ${where}`;
+            this.connection.query(query, values, function (error, results, fields) {
                 if (error) {
-                    fut.return(false);
+                    future.return(false);
                 } else {
-                    fut.return(results.changedRows);
+                    future.return(results.changedRows);
                 }
             });
-            return fut.wait();
+            return future.wait();
         }
+        showWarning('Cannot use `%` db server is close.', 'UPDATE');
+        return null;
     }
 }

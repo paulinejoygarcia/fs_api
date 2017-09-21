@@ -17,11 +17,11 @@ export default class Server {
         }
 
         let conn = new MySqlWrapper(
-            Meteor.settings.astpp.db.host || 'localhost',
-            Meteor.settings.astpp.db.user || 'root',
-            Meteor.settings.astpp.db.password || '',
-            Meteor.settings.astpp.db.database || 'admin',
-            Meteor.settings.astpp.db.port || 3306);
+            Meteor.settings.astpp.db.host,
+            Meteor.settings.astpp.db.user,
+            Meteor.settings.astpp.db.password,
+            Meteor.settings.astpp.db.database,
+            Meteor.settings.astpp.db.port);
         if (conn.connection) {
             this.dbConnection = conn;
         }
@@ -49,6 +49,7 @@ export default class Server {
             if (data.success) {
                 let result = null;
                 let api = new API(accountSid, auth.api, auth.secret, data.body.accessCode, ipAddress);
+                api.setDBConnection(this.dbConnection);
 
                 if (endpoint !== ENDPOINT.AUTH && !api.checkAccessCode()) {
                     Util.affixResponse(response, 403, {
@@ -60,7 +61,6 @@ export default class Server {
                     return;
                 }
 
-                api.setDBConnection(this.dbConnection);
                 api.setEndpoint(endpoint, subEndpoint, extEndpoint);
                 result = api.doProcess(request.method, data.body, this.dbConnection);
                 data = { ...data, ...result };
