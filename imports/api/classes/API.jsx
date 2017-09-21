@@ -84,6 +84,23 @@ export default class API {
                         select
                     }
                 }
+                break;
+
+            case ENDPOINT.NUMBER:
+                return {
+                    success: true,
+                    code: 200,
+                    data: 'number endpoint'
+                }    
+                break;
+
+            case ENDPOINT.SOCIAL:
+                return {
+                    success: true,
+                    code: 200,
+                    data: 'social endpoint'
+                }
+                break;  
         }
         return { success: false, code: 404, error: 'Invalid request!' };
     }
