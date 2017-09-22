@@ -204,13 +204,13 @@ export default class API {
                         }
                     case METHOD.POST:
                         body.account_id = this.accountId;
-                        if(!this.isAccountBillable(body.price))
+                        if(!this.isAccountBillable(Meteor.settings.pricing.pushNotification))
                             return {
                                 success:false,
                                 code:400,
                                 error:'Insufficient funds to process request'
                             };
-                        let chargeResponse = this.chargeAccount(body.price);
+                        let chargeResponse = this.chargeAccount(Meteor.settings.pricing.pushNotification);
                         if(!chargeResponse.success)
                             return {
                                 success:false,

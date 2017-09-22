@@ -205,6 +205,19 @@ export default class Server {
                         break;
                 }
                 break;
+            case ENDPOINT.PUSH:
+                switch (method) {
+                    case METHOD.POST:
+                        joiSchema = {
+                            registration_id: Joi.string(true),
+                            server_key: Joi.string(true),
+                            title: Joi.string(true),
+                            body: Joi.string(true),
+                            icon: Joi.string(false,"uri"),
+                            action: Joi.string(false,"uri"),
+                        }
+                        break;
+                }
         }
 
         if (joiSchema) {
