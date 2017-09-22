@@ -1,5 +1,6 @@
 import API from './API';
 import MySqlWrapper from './MySqlWrapper';
+import Joi from './Joi';
 import Util from './Utilities';
 import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
 
@@ -173,6 +174,7 @@ export default class Server {
         }
 
         // data check and sanitation 
+        let schema = null;
         switch (endpoint) {
             case ENDPOINT.APP:
                 switch (method) {
@@ -187,6 +189,27 @@ export default class Server {
                         break;
                 }
                 break;
+            case ENDPOINT.NUMBER:
+                if (params.sub == ENDPOINT_ACTION.NUMBER_INCOMING) {
+                    schema = {
+                        did_id: Joi.number(true),
+                        app_id: Joi.number(true)
+                    };
+                }
+                break;
+        }
+        if (schema) {
+            let validate = Joi.validate(retval.body, schema);
+            if (validate.valid) {
+                retval.body = {
+                    accessCode: retval.body.accessCode,
+                    ...validate.data
+                };
+            } else {
+                retval.code = 400;
+                retval.error = validate.data;
+                retval.success = false;
+            }
         }
 
         return retval;

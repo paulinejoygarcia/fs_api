@@ -1,4 +1,4 @@
-import { ENDPOINT, METHOD, MAX_API_LIFETIME } from './Const';
+import { ENDPOINT, ENDPOINT_ACTION, METHOD, MAX_API_LIFETIME } from './Const';
 import { Enc } from './Encryption';
 import Util from './Utilities';
 import moment from 'moment';
@@ -7,13 +7,43 @@ export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
         this.api = api;
         this.secret = secret;
-        this.accountId = accountId; // api account id
-        this.accountData = null; // account id
+        this.accountId = accountId;
+        this.accountData = null;
         this.accessCode = accessCode;
         this.ipAddress = ipAddress;
         this.endpoint = this.subEndpoint = this.extEndpoint = ENDPOINT.AUTH;
         this.enc = Enc(this.secret);
         this.databaseConnection = null;
+    }
+    getAccountBalance() {
+        let balance = 0;
+        if (acc = this.accountData)
+            balance = parseFloat(acc.balance) + parseFloat(acc.posttoexternal) * parseFloat(acc.credit_limit);
+
+        return balance;
+    }
+    updateAccountBalance(amount, paymentType = 'debit') {
+        if (this.accountData && parseFloat(amount)) {
+            let balance = parseFloat(this.accountData.balance) - parseFloat(amount);
+            if (paymentType == 'credit')
+                balance = parseFloat(this.accountData.balance) + parseFloat(amount);
+            return this.databaseConnection.update('accounts', { balance }, `id=${this.accountData.id}`);
+        }
+    }
+    chargeAccount(price) {
+        let result = {
+            success: false,
+            error: 'Insufficient funds to process payment'
+        };
+        if (this.getAccountBalance() >= parseFloat(price)) {
+            let charge = this.updateAccountBalance(price);
+            if (charge) {
+                result.success = true;
+                result.error = '';
+                result.data = 'Payment processed successfully';
+            }
+        }
+        return result;
     }
     setDBConnection(wrapper) {
         if (wrapper && wrapper.isConnected())
@@ -134,14 +164,21 @@ export default class API {
                 break;
 
             case ENDPOINT.NUMBER:
-                return {
-                    success: true,
-                    code: 200,
-                    data: 'number endpoint'
+                switch (this.subEndpoint) {
+                    case ENDPOINT_ACTION.NUMBER_AVAILABLE:
+                        return this.numberAvailable();
+                    case ENDPOINT_ACTION.NUMBER_OWNED:
+                        return this.numberOwned();
+                    case ENDPOINT_ACTION.NUMBER_INCOMING:
+                        return this.numberIncoming(body.did_id, body.app_id);
                 }
                 break;
 
             case ENDPOINT.SOCIAL:
+                switch (this.subEndpoint) {
+                    case ENDPOINT_ACTION.SOCIAL_ACCOUNT:
+                        return this.socialAccount(this.extEndpoint, body);
+                }    
                 return {
                     success: true,
                     code: 200,
@@ -150,5 +187,69 @@ export default class API {
                 break;
         }
         return { success: false, code: 404, error: 'Invalid request!' };
+    }
+
+    numberAvailable() {
+        let query = 'SELECT id, number, setup, monthlycost FROM dids WHERE accountid = ? AND parent_id = ?';
+        let numbers = this.databaseConnection.select(query, [0, 0]);
+        return {
+            success: true,
+            code: 200,
+            data: numbers || []
+        };
+    }
+
+    numberOwned() {
+        let query = 'SELECT id, number, setup, monthlycost FROM dids WHERE accountid = ? AND parent_id = ?';
+        let numbers = this.databaseConnection.select(query, [this.accountData.id, 0]);
+        return {
+            success: true,
+            code: 200,
+            data: numbers || []
+        };
+    }
+
+    numberIncoming(didId, appId) {
+        let query = 'SELECT id, setup FROM dids WHERE id = ? AND accountid = ? AND parent_id = ?';
+        let did = this.databaseConnection.selectOne(query, [didId, 0, 0]);
+        if (!did) {
+            return {
+                success: false,
+                code: 404,
+                error: 'DID number not found'
+            };
+        }
+
+        query = 'SELECT id FROM fs_applications WHERE id = ? AND accountid = ?';
+        let app = this.databaseConnection.selectOne(query, [appId, this.accountData.id]);
+        if (!app) {
+            return {
+                success: false,
+                code: 404,
+                error: 'Application not found'
+            };
+        }
+
+        let charge = this.chargeAccount(did.setup);
+        if (!charge.success) {
+            return {
+                success: false,
+                code: 200,
+                error: charge.error
+            };
+        }
+
+        let values = {
+            accountid: this.accountData.id,
+            assign_date: moment().format('YYYY-MM-DD HH:mm:ss'),
+            fs_app_id: app.id
+        };
+        this.databaseConnection.update('dids', values, `id=${did.id}`);
+
+        return {
+            success: true,
+            code: 200,
+            data: 'DID number purchased successfully',
+        };
     }
 }
