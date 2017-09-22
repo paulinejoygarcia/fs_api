@@ -165,6 +165,7 @@ export default class Server {
                 break;
             // requires access code
             case ENDPOINT.APP:
+			case ENDPOINT.FAX:
             case ENDPOINT.NUMBER:
             case ENDPOINT.SOCIAL:
                 if (!retval.body.accessCode) {
@@ -189,20 +190,174 @@ export default class Server {
                     case METHOD.POST:
                         joiSchema = {
                             friendly_name: Joi.string(true),
-                            call_url: Joi.string(true, false, null, null, true),
+                            call_url: Joi.string(true, false, null, null, false, true),
                             call_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
-                            call_fb_url: Joi.string(true, false, null, null, true),
+                            call_fb_url: Joi.string(true, false, null, null, false, true),
                             call_fb_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
-                            msg_url: Joi.string(true, false, null, null, true),
+                            msg_url: Joi.string(true, false, null, null, false, true),
                             msg_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
-                            msg_fb_url: Joi.string(true, false, null, null, true),
+                            msg_fb_url: Joi.string(true, false, null, null, false, true),
                             msg_fb_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
-                            fax_url: Joi.string(true, false, null, null, true),
+                            fax_url: Joi.string(true, false, null, null, false, true),
                             fax_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
-                            fax_fb_url: Joi.string(true, false, null, null, true),
+                            fax_fb_url: Joi.string(true, false, null, null, false, true),
                             fax_fb_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
                         }
                         break;
+                }
+                break;
+            case ENDPOINT.FAX:
+                switch (method) {
+                    case METHOD.POST:
+                        joiSchema = {
+                            to: Joi.number(true),
+                            from: Joi.number(true),
+                            files: Joi.array(Joi.file('files', false), 1)
+                        };
+                        break;
+                }
+                break;
+            case ENDPOINT.NUMBER:
+                if (params.sub == ENDPOINT_ACTION.NUMBER_INCOMING) {
+                    joiSchema = {
+                        did_id: Joi.number(true),
+                        app_id: Joi.number(true)
+                    };
+                }
+                break;
+            case ENDPOINT.SOCIAL:
+                switch (params.sub) {
+                    case ENDPOINT_ACTION.SOCIAL_ACCOUNT: {
+                        switch (params.ext) {
+                            case ENDPOINT_ACTION.SOCIAL_FB:
+                                joiSchema = {
+                                    access_token: Joi.string(true, 'alphanum'),
+                                    app_id: Joi.number(true),
+                                    app_secret: Joi.string(true, 'alphanum'),
+                                    page_id: Joi.string(true)
+                                };
+                                break;
+                            case ENDPOINT_ACTION.SOCIAL_IG:
+                                joiSchema = {
+                                    username: Joi.string(true),
+                                    password: Joi.string(true)
+                                };
+                                break;
+                            case ENDPOINT_ACTION.SOCIAL_LI:
+                                joiSchema = {
+                                    access_token: Joi.string(true),
+                                    client_id: Joi.string(true, 'alphanum'),
+                                    client_secret: Joi.string(true, 'alphanum'),
+                                    company_id: Joi.string(true)
+                                };
+                                break;
+                            case ENDPOINT_ACTION.SOCIAL_PI:
+                                joiSchema = {
+                                    access_token: Joi.string(true),
+                                    client_id: Joi.string(true),
+                                    client_secret: Joi.string(true),
+                                    username: Joi.string(true)
+                                };
+                                break;
+                            case ENDPOINT_ACTION.SOCIAL_TW:
+                                joiSchema = {
+                                    consumer_key: Joi.string(true),
+                                    consumer_secret: Joi.string(true),
+                                    access_key: Joi.string(true),
+                                    access_secret: Joi.string(true)
+                                };
+                                break;
+                            default:
+                                retval.code = 400;
+                                retval.error = `Site not found: ${params.ext}`;
+                                retval.success = false;
+                        }
+                        break;
+                    }
+                    case ENDPOINT_ACTION.SOCIAL_COMMENT: {
+                        switch (params.ext) {
+                            case ENDPOINT_ACTION.SOCIAL_FB:
+                            case ENDPOINT_ACTION.SOCIAL_LI:
+                            case ENDPOINT_ACTION.SOCIAL_TW:
+                                joiSchema = {
+                                    post_id: Joi.string(true),
+                                    comment: Joi.string(true)
+                                };
+                                break;
+                            default:
+                                retval.code = 400;
+                                retval.error = `Site not found: ${params.ext}`;
+                                retval.success = false;
+                        }
+                        break;
+                    }
+                    case ENDPOINT_ACTION.SOCIAL_POST: {
+                        switch (params.ext) {
+                            case ENDPOINT_ACTION.SOCIAL_FB:
+                                joiSchema = {
+                                    status: Joi.string(true),
+                                    image: Joi.file('image'),
+                                    link: Joi.string(false, null, [], [], true)
+                                };
+                                break;
+                            case ENDPOINT_ACTION.SOCIAL_IG:
+                                joiSchema = {
+                                    caption: Joi.string(),
+                                    image: Joi.file('image'),
+                                    video: Joi.file('video'),
+                                    cover_photo: Joi.file('cover_photo')
+                                };
+                                break;
+                            case ENDPOINT_ACTION.SOCIAL_LI:
+                                joiSchema = {
+                                    comment: Joi.string(false, null, [], [], true),
+                                    title: Joi.string(false, null, [], [], true),
+                                    desc: Joi.string(false, null, [], [], true),
+                                    url: Joi.string(false, null, [], [], true),
+                                    image_url: Joi.string(false, null, [], [], true)
+                                };
+                                break;
+                            case ENDPOINT_ACTION.SOCIAL_PI:
+                                if (type = retval.body.type) {
+                                    if (type == 'board') {
+                                        joiSchema = {
+                                            type: Joi.string(true),
+                                            name: Joi.string(true),
+                                            desc: Joi.string(false, null, [], [], true)
+                                        };
+                                    } else if (type == 'pin') {
+                                        joiSchema = {
+                                            type: Joi.string(true),
+                                            board: Joi.string(true),
+                                            note: Joi.string(false, null, [], [], true),
+                                            link: Joi.string(false, null, [], [], true),
+                                            image: Joi.file('image'),
+                                            image_url: Joi.string(false, null, [], [], true)
+                                        };
+                                    } else {
+                                        retval.code = 400;
+                                        retval.error = '`type` should be one of [board, pin]';
+                                        retval.success = false;
+                                    }
+                                } else {
+                                    retval.code = 400;
+                                    retval.error = '`type` parameter is required';
+                                    retval.success = false;
+                                }
+                                break;
+                            case ENDPOINT_ACTION.SOCIAL_TW:
+                                joiSchema = {
+                                    status: Joi.string(false, null, [], [], true),
+                                    image: Joi.file('image')
+                                };
+                                break;
+                            default:
+                                retval.code = 400;
+                                retval.error = `Site not found: ${params.ext}`;
+                                retval.success = false;
+                        }
+                        break;
+                    }
                 }
                 break;
         }
