@@ -11,9 +11,28 @@ const _validate = function(mode = 0, value = this) {
     });
     
     schema = Joi.object().keys(schema);
-    const res = Meteor.UTILS.joiValidate(value, schema);
+    const res = joiValidate(value, schema);
     if(res.valid) Object.assign(this, res.data);
     return res;
+}
+
+const joiValidate = function(value, schema){
+    let result = Joi.validate(value, schema, {
+        abortEarly: true,
+        stripUnknown: true,
+        skipFunctions: false
+    });
+
+    if(result.error)
+        return {
+            valid: false,
+            data: result.error.details[0].message
+        };
+
+    return {
+        valid: true,
+        data: result.value
+    };
 }
 
 export default class Base {

@@ -1,1 +1,1 @@
-export const MessageDB = new Mongo.Collection('messages', { idGeneration: 'MONGO' });
+export const MessageDB = new Mongo.Collection('messages');

@@ -2,23 +2,27 @@ import Message from '../Message.js';
 import MM4 from '../MM4';
 
 export default class MessageCtrl {
-    constructor(request = {}, urlParams = {}, validator = {}) {
-        this.validator = validator;
-        this.accountId = urlParams.accountId;
-        this.id = urlParams.id;
-        this.params = request.__valid_params || {};
-        this.astpp = request.__astpp;
+    constructor(db, params ={}, accoundId, send, smppSend, processRequestUrl, updateAccountBalance, isAccountBillable, didAccountOwner, id = null) {
+        this.databaseConnection = db;
+        this.params = params;
+        this.accountId = accoundId;
+        this.id = id;
         this.record = null;
-
+        this.smtpSend = send;
+        this.smppSend = smppSend;
+        this.processRequestUrl = processRequestUrl;
+        this.updateAccountBalance = updateAccountBalance;
+        this.isAccountBillable = isAccountBillable;
+        this.didAccountOwner = didAccountOwner;
+        this.user = null;
         if(id = this.id) {
             const r = Message.getById(id);
             if(r) this.record = r;
         }
-
         if(this.params.attachment) {
-            this.price = Meteor.GV.PRICING.mms.out;
+            this.price = Meteor.settings.pricing.mms.out;
         } else {
-            this.price = Meteor.GV.PRICING.sms.out * Message.getParts(this.params.body || '');
+            this.price = Meteor.settings.pricing.sms.out * Message.getParts(this.params.body || '');
         }
     }
 
@@ -44,27 +48,24 @@ export default class MessageCtrl {
 
     insert() {
         let p = this.params;
-        if(validator = this.validator.post) {
-            const v = Meteor.UTILS.joiValidate(p, validator());
-            if(!v.valid) return {
+        let query = 'SELECT * FROM astpp.accounts WHERE number = ?';
+        this.user = this.databaseConnection.selectOne(query, [this.accountId]);
+        if(!this.user.balance > this.price)
+            return {
                 success: false,
-                data: v.data
+                data: 'Insufficient funds'
             };
-
-            p = v.data;
-        }
-
-        const billable = this.astpp.checkBalance(this.price);
-        if(!billable.success) return billable;
 
         let record = new Message(p);
         record.account_id = this.accountId;
         const insert = record.insert();
+        console.log(insert);
         if(insert.success) {
             this.record = Message.getById(insert.data);
         }
         return insert;
     }
+
 
     send() {
         if(!this.record) return {
@@ -89,14 +90,14 @@ export default class MessageCtrl {
                 path: Meteor.GV.UPLOAD_PATH
             };
             const body = record.body;
-            send = Meteor._SERVER.smtpSend(from, to, originator, att, body, MM4.getHost(), MM4.getPort());
+            send = this.smtpSend(from, to, originator, att, body, MM4.getHost(), MM4.getPort());
             if(send.success) {
                 record.result = {internalId: send.data};
                 record.price = this.price;
                 record.update();
             }
         } else {
-            send = Meteor._SERVER.smppSend(record.from, record.to, record.body);
+            send = this.smppSend(record.from, record.to, record.body);
             if(send.success) {
                 record.message_id = send.data;
                 record.price = this.price;
@@ -105,9 +106,23 @@ export default class MessageCtrl {
         }
 
         if(send.success) {
-            this.astpp.accountCharge(this.price);
+            let available_bal = (this.user.balance) + this.user.posttoexternal * (this.user.credit_limit);
+            if(this.user)
+                if (!available_bal >= this.price)
+                    return {
+                        success: false,
+                        data: 'Insufficient funds'
+                    };
 
-            const app = this.astpp.didApp(record.from);
+            if(!this.isAccountBillable(this.price)){
+                return {
+                    success: false,
+                    code: 400,
+                    error: 'Insufficient funds'
+                };
+            }
+            this.updateAccountBalance(this.price, "debit");
+            const app = this.didAccountOwner(record.from);
 
             if(!app.success) return send;
 
@@ -115,11 +130,9 @@ export default class MessageCtrl {
                 const v = record.getValues();
                 delete v._id;
                 delete v.result;
-                Meteor.SERVER.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
+                this.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
             }
         }
-
-
         return send;
     }
 }

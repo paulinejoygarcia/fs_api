@@ -2,31 +2,29 @@ import Message from '../Message.js';
 import MM4 from '../MM4.js';
 
 export default class ScreenshotCtrl {
-    constructor(request = {}, urlParams = {}, validator = {}) {
-        this.validator = validator;
-        this.accountId = urlParams.accountId;
-        this.id = urlParams.id;
-        this.params = request.__valid_params || {};
-        this.astpp = request.__astpp;
+    constructor(db, params ={}, accoundId, send, smppSend, processRequestUrl, chargeBalance, didAccountOwner, id = null) {
+        this.databaseConnection = db;
+        this.params = params;
+        this.accountId = accoundId;
+        this.id = id;
         this.record = null;
+        this.user = null;
+        this.smtpSend = send;
+        this.didAccountOwner = didAccountOwner;
+        this.chargeBalance = chargeBalance;
+        this.processRequestUrl = processRequestUrl;
         this.price = Meteor.GV.PRICING.mms.out;
     }
 
     insert() {
         let p = this.params;
-        if(validator = this.validator.post) {
-            const v = Meteor.UTILS.joiValidate(p, validator());
-            if(!v.valid) return {
+        let query = 'SELECT * FROM astpp.accounts WHERE number = ?';
+        this.user = this.databaseConnection.selectOne(query, [this.accountId]);
+        if(!this.user.balance > this.price)
+            return {
                 success: false,
-                data: v.data
+                data: 'Insufficient funds'
             };
-
-            p = v.data;
-        }
-
-        const billable = this.astpp.checkBalance(this.price);
-        if(!billable.success) return billable;
-
         let record = new Message(p);
         record.account_id = this.accountId;
         const insert = record.insert();
@@ -59,22 +57,22 @@ export default class ScreenshotCtrl {
             path: Meteor.GV.UPLOAD_PATH
         };
         const body = record.body;
-        send = Meteor._SERVER.smtpSend(from, to, originator, att, body, MM4.getHost(), MM4.getPort());
+        send = this.smtpSend(from, to, originator, att, body, MM4.getHost(), MM4.getPort());
 
         if(send.success) {
            record.result = {internalId: send.data};
            record.price = this.price;
            record.update();
 
-           this.astpp.accountCharge(this.price);
+           this.chargeBalance(this.price, this.user.id);
 
-           const app = this.astpp.didApp(record.from);
+           const app = this.didAccountOwner(record.from);
            if(!app.success) return send;
 
            if(app.data.msg_url || app.data.msg_fb_url) {
                const v = record.getValues();
                delete v.result;
-               Meteor.SERVER.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
+               this.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
            }
         }
 

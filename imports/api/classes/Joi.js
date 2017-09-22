@@ -55,6 +55,13 @@ class Joi {
 
         return type;
     }
+    file(label){
+        return npmJoi.object().keys({
+            filename: Joi.string().required().options({language: {any: {required: 'should have a filename'}}}).label(label),
+            encoding: Joi.string().required().options({language: {any: {required: 'should have an encoding'},}}).label(label),
+            mime_type: Joi.string().required().options({language: {any: {required: 'should have a mime_type'}}}).label(label),
+        }).options({language: { object: { base: 'must be a file' }}});
+    }
 
     validate(object, schema) {
         let result = npmJoi.validate(object, npmJoi.object().keys(schema), {

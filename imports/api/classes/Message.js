@@ -4,7 +4,13 @@ import { MessageDB } from '../message';
 import splitSms from 'split-sms';
 
 const collection = MessageDB;
-
+const file = function(label){
+    return Joi.object().keys({
+        filename: Joi.string().required().options({language: {any: {required: 'should have a filename'}}}).label(label),
+        encoding: Joi.string().required().options({language: {any: {required: 'should have an encoding'},}}).label(label),
+        mime_type: Joi.string().required().options({language: {any: {required: 'should have a mime_type'}}}).label(label),
+    }).options({language: { object: { base: 'must be a file' }}});
+};
 const schema = function() {
     return {
         _id: Joi.string(),
@@ -14,7 +20,7 @@ const schema = function() {
         to: Joi.string(),
         direction: Joi.string().valid('outbound', 'inbound').default('outbound'),
         message_id: Joi.string().allow(null).default(null),
-        attachment: Meteor.UTILS.joiFile('files').allow(null).default(null),
+        attachment: file('files').allow(null).default(null),
         body: Joi.string(),
         status: Joi.number().valid(0, 1).default(0),
         price: Joi.number().default(0),
