@@ -7,5 +7,5 @@ import Login from '../imports/ui/Login.jsx';
 import Register from '../imports/ui/Register.jsx';
 
 Meteor.startup(() => {
-    render(<Login />, document.getElementById('render-target'));
+    render(<Reports />, document.getElementById('render-target'));
 });
