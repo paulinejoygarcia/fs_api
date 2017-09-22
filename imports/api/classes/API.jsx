@@ -17,7 +17,6 @@ export default class API {
         this.enc = Enc(this.secret);
         this.databaseConnection = null;
     }
-
     setDBConnection(wrapper) {
         if (wrapper && wrapper.isConnected())
             this.databaseConnection = wrapper;
