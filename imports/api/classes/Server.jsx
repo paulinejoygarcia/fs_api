@@ -1,4 +1,5 @@
 import API from './API';
+import Joi from './Joi';
 import MySqlWrapper from './MySqlWrapper';
 import Util from './Utilities';
 import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
@@ -112,15 +113,17 @@ export default class Server {
             code: 200,
             error: '',
             success: true
-        }
+        };
+        let joiSchema = null;
 
         switch (method) {
             case METHOD.GET:
-                retval.body = params.query;
-                break;
             case METHOD.POST:
             case METHOD.PUT:
-                retval.body = request.body;
+                retval.body = {
+                    ...params.query,
+                    ...request.body
+                }
                 break;
         }
 
@@ -184,9 +187,38 @@ export default class Server {
                             return retval;
                         }
                     case METHOD.POST:
+                        joiSchema = {
+                            friendly_name: Joi.string(true),
+                            call_url: Joi.string(true),
+                            call_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
+                            call_fb_url: Joi.string(true),
+                            call_fb_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
+                            msg_url: Joi.string(true),
+                            msg_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
+                            msg_fb_url: Joi.string(true),
+                            msg_fb_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
+                            fax_url: Joi.string(true),
+                            fax_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
+                            fax_fb_url: Joi.string(true),
+                            fax_fb_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
+                        }
                         break;
                 }
                 break;
+        }
+
+        if (joiSchema) {
+            let validate = Joi.validate(retval.body, joiSchema);
+            if (validate.valid) {
+                retval.body = {
+                    accessCode: retval.body.accessCode,
+                    ...validate.data
+                };
+            } else {
+                retval.code = 400;
+                retval.error = validate.data;
+                retval.success = false;
+            }
         }
 
         return retval;
