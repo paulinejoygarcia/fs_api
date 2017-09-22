@@ -8,7 +8,8 @@ export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
         this.api = api;
         this.secret = secret;
-        this.accountId = accountId;
+        this.accountId = accountId; // api account id
+        this.accountData = null; // account id
         this.accessCode = accessCode;
         this.ipAddress = ipAddress;
         this.endpoint = this.subEndpoint = this.extEndpoint = ENDPOINT.AUTH;
@@ -30,11 +31,12 @@ export default class API {
             if (code && (code = code.split(':')).length == 4) {
                 let accountId = code[0];
                 let apiSecret = code[1];
-                let query = "SELECT `id` FROM `accounts` WHERE `account_id`=? AND `secret`=?";
+                let query = "SELECT * FROM `accounts` WHERE `account_id`=? AND `secret`=?";
                 let result = this.databaseConnection.selectOne(query, [accountId, apiSecret]);
                 if (result) {
                     let time = parseInt(code[2]);
                     let ipAddress = this.enc.XoR(code[3], time);
+                    this.accountData = result;
                     if (accountId === this.accountId && this.secret === apiSecret && this.ipAddress === ipAddress) {
                         return (time - moment().valueOf()) > 0;
                     }
@@ -42,6 +44,42 @@ export default class API {
             }
         }
         return false;
+    }
+    getAccountBalance() {
+        let balance = 0;
+        if (acc = this.accountData)
+            balance = parseFloat(acc.balance) + parseFloat(acc.posttoexternal) * parseFloat(acc.credit_limit);
+
+        return balance;
+    }
+    isAccountBillable(price) {
+        if (this.getAccountBalance() >= parseFloat(price)) {
+            return true;
+        }
+        return false;
+    }
+    updateAccountBalance(amount, paymentType = 'debit') {
+        if (this.accountData && parseFloat(amount)) {
+            let balance = parseFloat(this.accountData.balance) - parseFloat(amount);
+            if (paymentType == 'credit')
+                balance = parseFloat(this.accountData.balance) + parseFloat(amount);
+            return this.databaseConnection.update('accounts', { balance }, `id=${this.accountData.id}`);
+        }
+    }
+    chargeAccount(price) {
+        let result = {
+            success: false,
+            error: 'Insufficient funds to process payment'
+        };
+        if (this.isAccountBillable(price)) {
+            let charge = this.updateAccountBalance(price);
+            if (charge) {
+                result.success = true;
+                result.error = '';
+                result.data = 'Payment processed successfully';
+            }
+        }
+        return result;
     }
     doProcess(method, body) {
         switch (this.endpoint) {
@@ -69,43 +107,69 @@ export default class API {
                 }
             }
             case ENDPOINT.APP:
-                let values = {
-                    accountid: '13',
-                    friendly_name: 'test4',
-                    call_url: 'http://acme.com/call',
-                    call_method: 'POST',
-                    msg_url: 'http://acme.com/msg',
-                    msg_method: 'POST',
-                    fax_url: 'http://acme.com/fax',
-                    fax_method: 'POST'
-                };
-                let insert = this.databaseConnection.insert('fs_applications', values);
+                let data = [];
+                switch (method) {
+                    case METHOD.GET: {
+                        if (this.subEndpoint) {
+                            let query = "SELECT * FROM `fs_applications` WHERE `id` = ? AND `retired` = 0";
+                            let result = this.databaseConnection.selectOne(query, this.subEndpoint);
+                            if (result) {
+                                data.push({
+                                    "id": result.id,
+                                    "friendly_name": result.friendly_name || '',
+                                    "call_url": result.call_url || '',
+                                    "call_method": result.call_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                    "call_fb_url": result.call_fb_url || '',
+                                    "call_fb_method": result.call_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                    "msg_url": result.msg_url || '',
+                                    "msg_method": result.msg_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                    "msg_fb_url": result.msg_fb_url || '',
+                                    "msg_fb_method": result.msg_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                    "fax_url": result.fax_url || '',
+                                    "fax_method": result.fax_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                    "fax_fb_url": result.fax_fb_url || '',
+                                    "fax_fb_method": result.fax_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET
+                                });
+                            } else
+                                data.push('APP NOT FOUND');
+                        } else {
+                            let query = "SELECT * FROM `fs_applications` WHERE `accountid` = ? AND `retired` = 0";
+                            let results = this.databaseConnection.select(query, this.accountData.id);
+                            if (results) {
+                                results.forEach((result) => {
+                                    data.push({
+                                        "id": result.id,
+                                        "friendly_name": result.friendly_name || '',
+                                        "call_url": result.call_url || '',
+                                        "call_method": result.call_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                        "call_fb_url": result.call_fb_url || '',
+                                        "call_fb_method": result.call_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                        "msg_url": result.msg_url || '',
+                                        "msg_method": result.msg_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                        "msg_fb_url": result.msg_fb_url || '',
+                                        "msg_fb_method": result.msg_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                        "fax_url": result.fax_url || '',
+                                        "fax_method": result.fax_method == METHOD.POST ? METHOD.POST : METHOD.GET,
+                                        "fax_fb_url": result.fax_fb_url || '',
+                                        "fax_fb_method": result.fax_fb_method == METHOD.POST ? METHOD.POST : METHOD.GET
+                                    });
+                                });
+                            }
+                        }
+                    }
+                        break;
+                    case METHOD.POST:
+                    case METHOD.PUT: {
 
-                let query = 'SELECT * FROM fs_applications WHERE id = ?';
-                let selectOne = this.databaseConnection.selectOne(query, [insert]);
-
-                values = {
-                    friendly_name: 'test4-edited',
-                    call_method: 'GET',
-                    msg_method: 'POST',
-                    fax_method: 'PUT'
-                };
-                let update = this.databaseConnection.update('fs_applications', values, `id=${insert}`);
-
-                let select = this.databaseConnection.select(query, [insert]);
-
+                    }
+                }
                 return {
                     success: true,
                     code: 200,
-                    data: {
-                        insert,
-                        selectOne,
-                        update,
-                        select
-                    }
+                    data: data
                 }
 			case ENDPOINT.VOICE:
-                let data = [];
+                data = [];
                 query = 'SELECT callstart as call_start,' +
                     'callerid as caller_id,' +
                     'callednum as called_number,' +
@@ -123,6 +187,7 @@ export default class API {
                     data: this.databaseConnection.select(query,[this.accountId])
                 }
 			case ENDPOINT.PUSH:
+			    data = {};
 			    switch(method) {
                     case METHOD.GET:
                         let queryPush = {account_id:this.accountId};
@@ -138,29 +203,24 @@ export default class API {
                             data: data
                         }
                     case METHOD.POST:
-                        query = 'SELECT balance from accounts WHERE account_id = ?';
-                        let select = this.databaseConnection.selectOne(query,[this.accountId]);
-                        if(select) {
-                            if(parseFloat(select.balance) >= parseFloat(body.price)) {}
-                            else return {
-                                success: false,
-                                data: 'Insufficient funds'
-                            };
-                        } else {
-                            return {
-                                success: false,
-                                data: 'Could not retrieve account balance'
-                            };
-                        }
-                        let insertedId =
                         body.account_id = this.accountId;
-                        if(insertedId = PushNotifDB.insert(body))
-                            //I will put it here..
-                            console.log("test charging");
+                        if(!this.isAccountBillable(body.price))
+                            return {
+                                success:false,
+                                code:400,
+                                error:'Insufficient funds to process request'
+                            };
+                        let chargeResponse = this.chargeAccount(body.price);
+                        if(!chargeResponse.success)
+                            return {
+                                success:false,
+                                code:200,
+                                error:chargeResponse.error
+                            };
                         return {
                             success: false,
                             code:200,
-                            data: insertedId
+                            data: {chargeResponse,PushNotifId:PushNotifDB.insert(body)}
                         };
                         break;
                 }
@@ -171,7 +231,7 @@ export default class API {
                     success: true,
                     code: 200,
                     data: 'number endpoint'
-                }    
+                }
                 break;
 
             case ENDPOINT.SOCIAL:
@@ -180,7 +240,7 @@ export default class API {
                     code: 200,
                     data: 'social endpoint'
                 }
-                break;  
+                break;
         }
         return { success: false, code: 404, error: 'Invalid request!' };
     }

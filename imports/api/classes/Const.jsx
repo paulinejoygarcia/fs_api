@@ -15,10 +15,13 @@ export const METHOD = {
 export const ENDPOINT = {
     AUTH: 'auth',
     APP: 'app',
-	VOICE:'voice',
-	PUSH:'push',
     NUMBER: 'number',
-    SOCIAL: 'social'
+    MESSAGE: 'message',
+    FAX: 'fax',
+    PUSH: 'push',
+    SOCIAL: 'social',
+    VIDEO: 'video',
+    VOICE: 'voice'
 };
 
 export const ENDPOINT_ACTION = {
@@ -28,54 +31,32 @@ export const ENDPOINT_ACTION = {
     SOCIAL_ACCOUNT: 'account',
     SOCIAL_COMMENT: 'comment',
     SOCIAL_POST: 'post',
+    MESSAGE_SMS: 'sms',
+    MESSAGE_MMS: 'mms',
+    VIDEO_SCREENSHOT: 'screenshot'
 };
 
-export const ENDPOINT_LIST = {
-    [ENDPOINT.AUTH]: {
-        [METHOD.GET]: METHOD.GET
-    },
-    [ENDPOINT.APP]: {
-        [METHOD.GET]: METHOD.GET,
-        [METHOD.POST]: METHOD.POST,
-        [METHOD.PUT]: METHOD.PUT
+export const ENDPOINT_CHECKPOINT = {
+    [ENDPOINT.AUTH]: [METHOD.GET],
+    [ENDPOINT.APP]: [METHOD.GET, METHOD.POST, METHOD.PUT],
+    [ENDPOINT.FAX]: [METHOD.GET, METHOD.POST],
+    [ENDPOINT.MESSAGE]: {
+        [ENDPOINT_ACTION.MESSAGE_SMS]: [METHOD.GET, METHOD.POST],
+        [ENDPOINT_ACTION.MESSAGE_MMS]: [METHOD.GET, METHOD.POST]
     },
     [ENDPOINT.NUMBER]: {
-        [METHOD.GET]: METHOD.GET,
-        [METHOD.POST]: METHOD.POST
+        [ENDPOINT_ACTION.NUMBER_AVAILABLE]: [METHOD.GET],
+        [ENDPOINT_ACTION.NUMBER_INCOMING]: [METHOD.GET],
+        [ENDPOINT_ACTION.NUMBER_OWNED]: [METHOD.POST]
     },
+    [ENDPOINT.PUSH]: [METHOD.GET, METHOD.POST],
     [ENDPOINT.SOCIAL]: {
-        [METHOD.POST]: METHOD.POST
+        [ENDPOINT_ACTION.SOCIAL_ACCOUNT]: [METHOD.POST],
+        [ENDPOINT_ACTION.SOCIAL_COMMENT]: [METHOD.POST]
     },
-    [ENDPOINT.VOICE]: {
-        [METHOD.GET]: METHOD.GET
-    },
-    [ENDPOINT.PUSH]: {
-        [METHOD.GET]: METHOD.GET,
-        [METHOD.POST]: METHOD.POST,
-    }
-};
 
-export const SUBENDPOINT_LIST = {
-    [ENDPOINT.NUMBER]: {
-        [ENDPOINT_ACTION.NUMBER_AVAILABLE]: {
-            [METHOD.GET]: METHOD.GET
-        },
-        [ENDPOINT_ACTION.NUMBER_OWNED]: {
-            [METHOD.GET]: METHOD.GET
-        },
-        [ENDPOINT_ACTION.NUMBER_INCOMING]: {
-            [METHOD.POST]: METHOD.POST
-        }
+    [ENDPOINT.VIDEO]: {
+        [ENDPOINT_ACTION.VIDEO_SCREENSHOT]: [METHOD.GET, METHOD.POST]
     },
-    [ENDPOINT.SOCIAL]: {
-        [ENDPOINT_ACTION.SOCIAL_ACCOUNT]: {
-            [METHOD.POST]: METHOD.POST
-        },
-        [ENDPOINT_ACTION.SOCIAL_COMMENT]: {
-            [METHOD.POST]: METHOD.POST
-        },
-        [ENDPOINT_ACTION.SOCIAL_POST]: {
-            [METHOD.POST]: METHOD.POST
-        },
-    },
-};
+    [ENDPOINT.VOICE]: [METHOD.GET]
+}
