@@ -195,13 +195,24 @@ export default class API {
                     '(SELECT id from accounts WHERE account_id = ?)' +
                     ' ORDER BY callstart DESC' +
                     (body.limit?' LIMIT '+body.limit:'');
+                this.databaseConnection.select(query,[this.accountId]).forEach((accInfo)=>{
+                    data.push({
+                        call_start:accInfo.call_start,
+                        caller_id:accInfo.caller_id,
+                        called_number: accInfo.called_number,
+                        duration: accInfo.duration,
+                        disposition: accInfo.disposition,
+                        price: accInfo.price,
+                        call_id: accInfo.call_id
+                    });
+                });
                 return {
                     success: true,
                     code: 200,
-                    data: this.databaseConnection.select(query,[this.accountId])
+                    data: data
                 }
 			case ENDPOINT.PUSH:
-			    data = {};
+			    data = [];
 			    switch(method) {
                     case METHOD.GET:
                         let queryPush = {account_id:this.accountId};
@@ -210,7 +221,22 @@ export default class API {
                             queryPush._id = new Mongo.ObjectID(this.subEndpoint);
                         if(body.limit)
                             optionsPush.limit = parseInt(body.limit);
-                        data = PushNotifDB.find(queryPush,optionsPush).fetch();
+                        PushNotifDB.find(queryPush,optionsPush).fetch().forEach((PushNotif)=> {
+                            data.push({
+                                _id:PushNotif._id._str,
+                                registration_id: PushNotif.registration_id,
+                                title: PushNotif.title,
+                                body: PushNotif.body,
+                                server_key: PushNotif.server_key,
+                                icon: PushNotif.icon || null,
+                                action: PushNotif.action || null,
+                                priority: PushNotif.priority || 0,
+                                message_id: PushNotif.message_id || "",
+                                price: PushNotif.price || 0.0,
+                                created_dt: moment(PushNotif.createdTimestamp).format("MMM-DD-YYYY hh:mm:ss A"),
+                                account_id: PushNotif.account_id
+                            });
+                        });
                         return {
                             success: true,
                             code: 200,
@@ -218,6 +244,7 @@ export default class API {
                         }
                     case METHOD.POST:
                         body.account_id = this.accountId;
+                        body.createdTimestamp = moment().valueOf();
                         if(!this.isAccountBillable(Meteor.settings.pricing.pushNotification))
                             return {
                                 success:false,
@@ -228,13 +255,13 @@ export default class API {
                         if(!chargeResponse.success)
                             return {
                                 success:false,
-                                code:400,
+                                code:500,
                                 error:chargeResponse.error
                             };
                         return {
                             success: true,
                             code:200,
-                            data: {chargeResponse,PushNotifId:PushNotifDB.insert(body)}
+                            data: {chargeResponse,PushNotifId:PushNotifDB.insert(body)._str}
                         };
                         break;
                 }
