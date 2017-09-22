@@ -24,3 +24,6 @@ twbs:bootstrap
 themeteorchef:bert
 accounts-password
 momentjs:moment
+react-meteor-data
+accounts-ui@1.1.9
+fourseven:scss

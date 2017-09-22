@@ -1,4 +1,9 @@
 {
+    "public": {
+        "config": {
+            "title": "uConnectIT"
+        }
+    },
     "collections": {
         "fax": "faxes",
         "socialAccount": "social_accounts",

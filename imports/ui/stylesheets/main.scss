@@ -1,0 +1,11 @@
+
+.tc-wrapper{
+    .site-wrapper{
+        .site-menubar{
+            .menu-container{
+                height: calc(100% - 100px);
+                overflow: auto;
+            }
+        }
+    }
+}

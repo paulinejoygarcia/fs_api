@@ -1,5 +1,13 @@
 export const MAX_API_LIFETIME = 4; // 4 hours
 
+export const ROUTE_COMPONENT = {
+    DASHBOARD: 'dashboard',
+    ACCOUNT: {
+        INFO: 'info',
+        PROFILE: 'profile'
+    }
+}
+
 export const METHOD = {
     GET: 'GET',         //The GET method requests a representation of the specified resource. Requests using GET should only retrieve data.
     HEAD: 'HEAD',       //The HEAD method asks for a response identical to that of a GET request, but without the response body.
