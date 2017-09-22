@@ -1,7 +1,7 @@
 import npmJoi from 'joi';
 
 class Joi {
-    string(isRequired = false, regex = null, validValues = [], invalidValues = [], allowEmpty = false) {
+    string(isRequired = false, regex = null, validValues = [], invalidValues = []) {
         let type = npmJoi.string();
 
         if (isRequired)
@@ -27,16 +27,14 @@ class Joi {
             }
         }
 
-        if (validValues && validValues.length) {
+        if (validValues.length) {
             type = type.valid(validValues);
         }
 
-        if (invalidValues && invalidValues.length) {
+        if (invalidValues.length) {
             type = type.invalid(invalidValues);
         }
 
-        if (allowEmpty)
-            type = type.allow('').default('');
         return type;
     }
 
@@ -57,12 +55,13 @@ class Joi {
 
         return type;
     }
-    file(label){
+
+    file(label) {
         return npmJoi.object().keys({
-            filename: Joi.string().required().options({language: {any: {required: 'should have a filename'}}}).label(label),
-            encoding: Joi.string().required().options({language: {any: {required: 'should have an encoding'},}}).label(label),
-            mime_type: Joi.string().required().options({language: {any: {required: 'should have a mime_type'}}}).label(label),
-        }).options({language: { object: { base: 'must be a file' }}});
+            filename: Joi.string().required().options({ language: { any: { required: 'should have a filename' } } }).label(label),
+            encoding: Joi.string().required().options({ language: { any: { required: 'should have an encoding' }, } }).label(label),
+            mime_type: Joi.string().required().options({ language: { any: { required: 'should have a mime_type' } } }).label(label),
+        }).options({ language: { object: { base: 'must be a file' } } });
     }
 
     validate(object, schema) {

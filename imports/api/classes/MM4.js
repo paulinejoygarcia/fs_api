@@ -7,24 +7,31 @@ export default class MM4 {
     static getSender(number) {
         return `+${number.replace(/\D/g, '')}/TYPE=PLMN@txtmequick.com`;
     }
+
     static getRcpt(number) {
         return `+${number.replace(/\D/g, '')}/TYPE=PLMN@mm4.inphomatch.com`;
     }
+
     static getOriginator(number) {
         return `+${number.replace(/\D/g, '')}@txtmequick.com`;
     }
+
     static getNumber(address) {
         return address.split('@')[0].replace(/\D/g, '');
     }
+
     static getHost() {
         return Meteor.settings.mm4.host;
     }
+
     static getPort() {
         return Meteor.settings.mm4.port;
     }
+
     static isRequest(string) {
         return string == 'MM4_forward.REQ';
     }
+
     static isResponse(string) {
         return string == 'MM4_forward.RES';
     }
@@ -109,9 +116,15 @@ export default class MM4 {
 
         if (att) {
             switch (att.type) {
-                case 'image': smilMedia = `<img src="${att.filename}" region="Image"/>`; break;
-                case 'audio': smilMedia = `<audio src="${att.filename}" region="Audio"/>`; break;
-                case 'video': smilMedia = `<video src="${att.filename}" region="Video"/>`; break;
+                case 'image':
+                    smilMedia = `<img src="${att.filename}" region="Image"/>`;
+                    break;
+                case 'audio':
+                    smilMedia = `<audio src="${att.filename}" region="Audio"/>`;
+                    break;
+                case 'video':
+                    smilMedia = `<video src="${att.filename}" region="Video"/>`;
+                    break;
             }
 
             dataMedia = [
@@ -150,7 +163,6 @@ export default class MM4 {
         }
 
         eml.push(`<smil><head><layout><root-layout width="1848px" height="1080px"/><region id="Image" left="0" top="0" width="1848px" height="972px" fit="meet"/><region id="Text" left="0" top="972" width="1848px" height="108px" fit="meet"/></layout></head><body><par dur="5000ms">${smilMedia}${smilText}</par></body></smil>`);
-
 
         if (dataMedia) eml = [...eml, ...dataMedia];
         if (dataText) eml = [...eml, ...dataText];

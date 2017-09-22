@@ -1,4 +1,4 @@
-import { ENDPOINT, METHOD, MAX_API_LIFETIME } from './Const';
+import { ENDPOINT, METHOD, MAX_API_LIFETIME, ENDPOINT_ACTION } from './Const';
 import { Enc } from './Encryption';
 import Util from './Utilities';
 import moment from 'moment';
@@ -17,6 +17,7 @@ export default class API {
         this.enc = Enc(this.secret);
         this.databaseConnection = null;
     }
+
     setDBConnection(wrapper) {
         if (wrapper && wrapper.isConnected())
             this.databaseConnection = wrapper;
@@ -48,16 +49,18 @@ export default class API {
         }
         return false;
     }
+
     getAccountBalance() {
         let balance = 0;
-        if (acc = this.accountData)
-            balance = parseFloat(acc.balance) + parseFloat(acc.posttoexternal) * parseFloat(acc.credit_limit);
-
+        if (this.accountData)
+            balance = parseFloat(this.accountData.balance) + parseFloat(this.accountData.posttoexternal) * parseFloat(this.accountData.credit_limit);
         return balance;
     }
+
     isAccountBillable(price) {
-        return(this.getAccountBalance() >= parseFloat(price));
+        return (this.getAccountBalance() >= parseFloat(price));
     }
+
     updateAccountBalance(amount, paymentType = 'debit') {
         if (this.accountData && parseFloat(amount)) {
             let balance = parseFloat(this.accountData.balance) - parseFloat(amount);
@@ -82,8 +85,7 @@ export default class API {
         return result;
     }
 
-    doProcess(method, body, server) {
-        delete body.accessCode;
+    doProcess(method, body, smtpSend, smppSend, processRequestUrl) {
         switch (this.endpoint) {
             case ENDPOINT.AUTH: {
                 let query = "SELECT `api`, `secret` FROM `accounts` WHERE `account_id`=?";
@@ -162,28 +164,16 @@ export default class API {
                         break;
                     case METHOD.POST:
                     case METHOD.PUT: {
-                        let query = "SELECT id FROM `fs_applications` WHERE `friendly_name` = ?";
-                        let dupe = this.databaseConnection.selectOne(query, body.friendly_name);
-                        if (dupe && dupe.id !== parseInt(this.subEndpoint)) {
-                            return { success: false, code: 400, data: `${body.friendly_name} already exists!` }
-                        }
-                        body.accountid = this.accountData.id;
-                        if (this.subEndpoint) {
-                            let result = this.databaseConnection.update('fs_applications', body, `id=${parseInt(this.subEndpoint)}`);
-                            if (result) {
-                                return { success: true, code: 200, data: { id: parseInt(this.subEndpoint), update: result } }
-                            }
-                            return { success: false, code: 400, data: `Application id '${this.subEndpoint}' not found!` }
-                        } else {
-                            let result = this.databaseConnection.insert('fs_applications', body);
-                            if (result) {
-                                return { success: true, code: 200, data: { id: result } }
-                            }
-                            return { success: false, code: 500, data: 'Something went wrong!' }
-                        }
+
                     }
                 }
+                return {
+                    success: true,
+                    code: 200,
+                    data: data
+                }
                 break;
+
             case ENDPOINT.NUMBER:
                 return {
                     success: true,
@@ -191,6 +181,7 @@ export default class API {
                     data: 'number endpoint'
                 }
                 break;
+
             case ENDPOINT.SOCIAL:
                 return {
                     success: true,
@@ -203,9 +194,8 @@ export default class API {
                 switch (method) {
                     case METHOD.POST:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, server.smtpSend, server.smppSend, server.processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.didAccountOwner);
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
                             let res = ctrl.insert();
-                            console.log("sending...");
                             if (res.success) res = ctrl.send();
                             return res;
                         } catch (err) {
@@ -214,10 +204,11 @@ export default class API {
                         break;
                     case METHOD.GET:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, server.smtpSend, server.smppSend, server.processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.didAccountOwner);
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
                             return {
-                                statusCode: 200,
-                                body: ctrl.list()
+                                success: true,
+                                code: 200,
+                                data: ctrl.list()
                             };
                         } catch (err) {
                             console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
@@ -235,13 +226,11 @@ export default class API {
                 switch (method) {
                     case METHOD.POST:
                         switch (this.subEndpoint) {
-                            case VIDEO_SUB_ENDPOINT.SCREENSHOTS:
-                                const ctrl = new ScreenshotsCtrl(this.databaseConnection, body, this.accountId, server.smtpSend, server.smppSend, server.processRequestUrl, this.chargeBalance, this.didAccountOwner);
+                            case ENDPOINT_ACTION.VIDEO_SCREENSHOT:
+                                const ctrl = new ScreenshotsCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
                                 let res = ctrl.insert();
-                                console.log(res);
                                 if (res.success) res = ctrl.send();
                                 return res;
-                                break;
                         }
                         break;
                     default:

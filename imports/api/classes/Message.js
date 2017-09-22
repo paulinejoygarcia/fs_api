@@ -4,14 +4,14 @@ import { MessageDB } from '../message';
 import splitSms from 'split-sms';
 
 const collection = MessageDB;
-const file = function(label){
+const file = function (label) {
     return Joi.object().keys({
-        filename: Joi.string().required().options({language: {any: {required: 'should have a filename'}}}).label(label),
-        encoding: Joi.string().required().options({language: {any: {required: 'should have an encoding'},}}).label(label),
-        mime_type: Joi.string().required().options({language: {any: {required: 'should have a mime_type'}}}).label(label),
-    }).options({language: { object: { base: 'must be a file' }}});
+        filename: Joi.string().required().options({ language: { any: { required: 'should have a filename' } } }).label(label),
+        encoding: Joi.string().required().options({ language: { any: { required: 'should have an encoding' }, } }).label(label),
+        mime_type: Joi.string().required().options({ language: { any: { required: 'should have a mime_type' } } }).label(label),
+    }).options({ language: { object: { base: 'must be a file' } } });
 };
-const schema = function() {
+const schema = function () {
     return {
         _id: Joi.string(),
         account_id: Joi.string(),
@@ -35,28 +35,28 @@ export default class Message extends Base {
     constructor(obj) {
         super(collection, obj, schema, insertRequired, updateRequired);
     }
-    
+
     static getById(id) {
         const rec = Base.getOne(collection, id);
-        if(rec.success) return new Message(rec.data);
-        
+        if (rec.success) return new Message(rec.data);
+
         return null;
     }
-    
+
     static getByInternalId(id) {
-        const rec = Base.getOne(collection, {attachment: {$ne: null}, 'result.internalId': id});
-        if(rec.success) return new Message(rec.data);
-        
+        const rec = Base.getOne(collection, { attachment: { $ne: null }, 'result.internalId': id });
+        if (rec.success) return new Message(rec.data);
+
         return null;
     }
-    
+
     static getAll(query) {
         const rec = Base.getAll(collection, query);
-        if(rec.success) return rec.data;
-        
+        if (rec.success) return rec.data;
+
         return rec;
     }
-    
+
     static getParts(body) {
         const splitted = splitSms.split(body);
         return splitted.parts.length;

@@ -8,7 +8,7 @@ export default class Fcm {
         self.serverKey = serverKey;
         self.registrationId = registrationId;
     }
-    
+
     sendNotification(title, body, icon, action, priority) {
         let params = {
             to: this.registrationId,
@@ -20,15 +20,15 @@ export default class Fcm {
             },
             priority: priority || 10
         };
-        
+
         let res = Util.httpRequest(apiUrl + 'send', 'POST', null, params, {
             'Content-Type': 'application/json',
             Authorization: 'key=' + this.serverKey
         });
-        
-        if(res.statusCode == 200) {
+
+        if (res.statusCode == 200) {
             let pp = JSON.parse(res.data);
-            if(pp.success) {
+            if (pp.success) {
                 return {
                     success: true,
                     data: pp.results[0]['message_id']
@@ -39,7 +39,7 @@ export default class Fcm {
                 data: pp.results[0]['error']
             };
         }
-        
+
         return {
             success: false,
             data: 'Unable to send notification'
