@@ -1,7 +1,7 @@
 import npmJoi from 'joi';
 
 class Joi {
-    string(isRequired = false, regex = null, validValues = [], invalidValues = []) {
+    string(isRequired = false, regex = null, validValues = [], invalidValues = [], allowEmpty = false) {
         let type = npmJoi.string();
 
         if (isRequired)
@@ -27,14 +27,16 @@ class Joi {
             }
         }
 
-        if (validValues.length) {
+        if (validValues && validValues.length) {
             type = type.valid(validValues);
         }
 
-        if (invalidValues.length) {
+        if (invalidValues && invalidValues.length) {
             type = type.invalid(invalidValues);
         }
 
+        if (allowEmpty)
+            type = type.allow('').default('');
         return type;
     }
 

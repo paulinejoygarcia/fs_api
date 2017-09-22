@@ -83,6 +83,7 @@ export default class API {
     }
 
     doProcess(method, body, server) {
+        delete body.accessCode;
         switch (this.endpoint) {
             case ENDPOINT.AUTH: {
                 let query = "SELECT `api`, `secret` FROM `accounts` WHERE `account_id`=?";
@@ -161,16 +162,28 @@ export default class API {
                         break;
                     case METHOD.POST:
                     case METHOD.PUT: {
-
+                        let query = "SELECT id FROM `fs_applications` WHERE `friendly_name` = ?";
+                        let dupe = this.databaseConnection.selectOne(query, body.friendly_name);
+                        if (dupe && dupe.id !== parseInt(this.subEndpoint)) {
+                            return { success: false, code: 400, data: `${body.friendly_name} already exists!` }
+                        }
+                        body.accountid = this.accountData.id;
+                        if (this.subEndpoint) {
+                            let result = this.databaseConnection.update('fs_applications', body, `id=${parseInt(this.subEndpoint)}`);
+                            if (result) {
+                                return { success: true, code: 200, data: { id: parseInt(this.subEndpoint), update: result } }
+                            }
+                            return { success: false, code: 400, data: `Application id '${this.subEndpoint}' not found!` }
+                        } else {
+                            let result = this.databaseConnection.insert('fs_applications', body);
+                            if (result) {
+                                return { success: true, code: 200, data: { id: result } }
+                            }
+                            return { success: false, code: 500, data: 'Something went wrong!' }
+                        }
                     }
                 }
-                return {
-                    success: true,
-                    code: 200,
-                    data: data
-                }
                 break;
-
             case ENDPOINT.NUMBER:
                 return {
                     success: true,
@@ -178,7 +191,6 @@ export default class API {
                     data: 'number endpoint'
                 }
                 break;
-
             case ENDPOINT.SOCIAL:
                 return {
                     success: true,

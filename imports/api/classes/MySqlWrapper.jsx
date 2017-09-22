@@ -44,7 +44,8 @@ export default class MySqlWrapper {
     insert(table, values) {
         if (this.isConnected()) {
             let future = new npmFuture();
-            this.connection.query(`INSERT INTO ${table} SET ?`, values, function (error, results, fields) {
+            let query = `INSERT INTO ${table} SET ?`;
+            this.connection.query(query, values, function (error, results, fields) {
                 if (error) {
                     showDebug('SQL ERROR: %s (%s) query: `%s`', error.sqlMessage, error.sqlState, query);
                     future.return(false);

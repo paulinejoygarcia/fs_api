@@ -193,17 +193,17 @@ export default class Server {
                     case METHOD.POST:
                         joiSchema = {
                             friendly_name: Joi.string(true),
-                            call_url: Joi.string(true),
+                            call_url: Joi.string(true, false, null, null, true),
                             call_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
-                            call_fb_url: Joi.string(true),
+                            call_fb_url: Joi.string(true, false, null, null, true),
                             call_fb_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
-                            msg_url: Joi.string(true),
+                            msg_url: Joi.string(true, false, null, null, true),
                             msg_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
-                            msg_fb_url: Joi.string(true),
+                            msg_fb_url: Joi.string(true, false, null, null, true),
                             msg_fb_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
-                            fax_url: Joi.string(true),
+                            fax_url: Joi.string(true, false, null, null, true),
                             fax_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
-                            fax_fb_url: Joi.string(true),
+                            fax_fb_url: Joi.string(true, false, null, null, true),
                             fax_fb_method: Joi.string(true, false, [METHOD.GET, METHOD.POST]),
                         }
                         break;
