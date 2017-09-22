@@ -1,6 +1,14 @@
 import { ENDPOINT, ENDPOINT_ACTION, METHOD, MAX_API_LIFETIME } from './Const';
 import { Enc } from './Encryption';
 import Util from './Utilities';
+import Facebook from './Facebook';
+import Linkedin from './Linkedin';
+import Pinterest from './Pinterest';
+import Twitter from './Twitter';
+import FaxManager, { FaxDB } from './FaxManager';
+import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
+import SocialCommentManager, { SocialCommentDB } from './SocialCommentManager';
+import SocialPostManager, { SocialPostDB } from './SocialPostManager';
 import moment from 'moment';
 
 export default class API {
@@ -17,10 +25,16 @@ export default class API {
     }
     getAccountBalance() {
         let balance = 0;
-        if (acc = this.accountData)
-            balance = parseFloat(acc.balance) + parseFloat(acc.posttoexternal) * parseFloat(acc.credit_limit);
+        if (this.accountData)
+            balance = parseFloat(this.accountData.balance) + parseFloat(this.accountData.posttoexternal) * parseFloat(this.accountData.credit_limit);
 
         return balance;
+    }
+    isAccountBillable(price) {
+        if (this.getAccountBalance() >= parseFloat(price)) {
+            return true;
+        }
+        return false;
     }
     updateAccountBalance(amount, paymentType = 'debit') {
         if (this.accountData && parseFloat(amount)) {
@@ -35,7 +49,7 @@ export default class API {
             success: false,
             error: 'Insufficient funds to process payment'
         };
-        if (this.getAccountBalance() >= parseFloat(price)) {
+        if (this.isAccountBillable(price)) {
             let charge = this.updateAccountBalance(price);
             if (charge) {
                 result.success = true;
@@ -176,6 +190,16 @@ export default class API {
                     }
                 }
                 break;
+
+            case ENDPOINT.FAX:
+                switch (method) {
+                    case METHOD.GET:
+                        return this.faxGet(this.subEndpoint);
+                    case METHOD.POST:
+                        return this.faxSender(body.to, body.from, body.files);
+                }
+                break;
+
             case ENDPOINT.NUMBER:
                 switch (this.subEndpoint) {
                     case ENDPOINT_ACTION.NUMBER_AVAILABLE:
@@ -190,7 +214,11 @@ export default class API {
                 switch (this.subEndpoint) {
                     case ENDPOINT_ACTION.SOCIAL_ACCOUNT:
                         return this.socialAccount(this.extEndpoint, body);
-                }    
+                    case ENDPOINT_ACTION.SOCIAL_COMMENT:
+                        return this.socialComment(this.extEndpoint, body);
+                    case ENDPOINT_ACTION.SOCIAL_POST:
+                        return this.socialPost(this.extEndpoint, body);
+                }
                 return {
                     success: true,
                     code: 200,
@@ -199,6 +227,59 @@ export default class API {
                 break;
         }
         return { success: false, code: 404, error: 'Invalid request!' };
+    }
+
+    faxGet(id) {
+        if (id) {
+            let fax = FaxDB.findOne({ accountId: this.accountId, uuid: id });
+            if (fax) {
+                let faxManager = new FaxManager(this.accountId);
+                faxManager.parseJSON(fax);
+                return {
+                    success: true,
+                    code: 200,
+                    data: faxManager.toApiJson()
+                };
+            } else {
+                return {
+                    success: false,
+                    code: 404,
+                    error: 'Fax record not found'
+                };
+            }
+        }
+
+        return {
+            success: true,
+            code: 200,
+            data: FaxDB.find({ accountId: this.accountId }).fetch().map(rec => {
+                let faxManager = new FaxManager(this.accountId);
+                faxManager.parseJSON(rec);
+                return faxManager.toApiJson();
+            })
+        };
+    }
+
+    faxSender(to, from, files) {
+        let price = Meteor.settings.pricing.fax || 0.04;
+        if (!this.isAccountBillable(price)) {
+            return {
+                success: false,
+                code: 400,
+                error: 'Insufficient funds to process request'
+            };
+        }
+
+        let fax = new FaxManager(this.accountId, to, from, 'outbound', [], price);
+        fax.flush();
+
+        //TODO: send fax and charge account
+
+        return {
+            success: true,
+            code: 200,
+            data: 'Fax queued successfully'
+        };
     }
 
     numberAvailable() {
@@ -262,6 +343,192 @@ export default class API {
             success: true,
             code: 200,
             data: 'DID number purchased successfully',
+        };
+    }
+
+    socialAccount(site, params) {
+        let socialAccount = new SocialAccountManager(this.accountId);
+        let account = SocialAccountDB.findOne({ accountId: this.accountId });
+
+        if (account)
+            socialAccount.parseJSON(account);
+
+        switch (site) {
+            case ENDPOINT_ACTION.SOCIAL_FB:
+                socialAccount.setFB(params.access_token, params.app_id, params.app_secret, params.page_id);
+                break;
+            case ENDPOINT_ACTION.SOCIAL_IG:
+                socialAccount.setIG(params.username, params.password);
+                break;
+            case ENDPOINT_ACTION.SOCIAL_LI:
+                socialAccount.setLI(params.access_token, params.client_id, params.client_secret, params.company_id);
+                break;
+            case ENDPOINT_ACTION.SOCIAL_PI:
+                socialAccount.setPI(params.access_token, params.client_id, params.client_secret, params.username);
+                break;
+            case ENDPOINT_ACTION.SOCIAL_TW:
+                socialAccount.setTW(params.consumer_key, params.consumer_secret, params.access_key, params.access_secret);
+                break;
+        }
+
+        socialAccount.flush();
+
+        return {
+            success: true,
+            code: 200,
+            data: 'Social account saved'
+        };
+    }
+
+    socialComment(site, params) {
+        let price = Meteor.settings.pricing.socialComment || 0.002;
+        if (!this.isAccountBillable(price)) {
+            return {
+                success: false,
+                code: 400,
+                error: 'Insufficient funds to process request'
+            };
+        }
+
+        let account = SocialAccountDB.findOne({ accountId: this.accountId });
+        if (!account) {
+            return {
+                success: false,
+                code: 404,
+                error: 'Social account record not found'
+            };
+        }
+
+        let postId = params.post_id;
+        let comment = params.comment;
+        let socialComment = new SocialCommentManager(this.accountId, site, postId, comment, price);
+        socialComment.flush();
+
+        let result = null;
+        switch (site) {
+            case ENDPOINT_ACTION.SOCIAL_FB:
+                let fbAcc = account.accounts.fb;
+                let fb = new Facebook(fbAcc.accessToken, fbAcc.appId, fbAcc.appSecret, fbAcc.pageId);
+                result = fb.postComment(postId, comment);
+                break;
+            case ENDPOINT_ACTION.SOCIAL_LI:
+                let liAcc = account.accounts.li;
+                let li = new Linkedin(liAcc.username, liAcc.password);
+                result = li.postComment(postId, comment);
+                break;
+            case ENDPOINT_ACTION.SOCIAL_TW:
+                let twAcc = account.accounts.tw;
+                let tw = new Twitter(twAcc.consumerKey, twAcc.consumerSecret, twAcc.accessKey, twAcc.accessSecret);
+                result = tw.createTweet(comment, null, postId);
+                break;
+        }
+
+        if (result) {
+            socialComment.setResult(result);
+            socialComment.flush();
+            if (result.success) {
+                let charge = this.chargeAccount(price);
+                return {
+                    success: charge.success,
+                    code: 200,
+                    data: charge.success ? 'Social comment posted successfully' : charge.error
+                };
+            }
+        }
+
+        return {
+            success: false,
+            code: 200,
+            data: 'Social comment could not be posted'
+        };
+    }
+
+    socialPost(site, params) {
+        let price = Meteor.settings.pricing.socialPost || 0.003;
+        if (!this.isAccountBillable(price)) {
+            return {
+                success: false,
+                code: 400,
+                error: 'Insufficient funds to process request'
+            };
+        }
+
+        let account = SocialAccountDB.findOne({ accountId: this.accountId });
+        if (!account) {
+            return {
+                success: false,
+                code: 404,
+                error: 'Social account record not found'
+            };
+        }
+
+        let result = null;
+        let socialPost = new SocialPostManager(this.accountId, site, null, price);
+
+        switch (site) {
+            case ENDPOINT_ACTION.SOCIAL_FB:
+                socialPost.setFB(params.status, params.image, params.link);
+                let fbAcc = account.accounts.fb;
+                let fb = new Facebook(fbAcc.accessToken, fbAcc.appId, fbAcc.appSecret, fbAcc.pageId);
+                if (params.image) {
+                    //TODO: post with image
+                } else {
+                    if (params.link) result = fb.postStatus(params.status, params.link);
+                    else result = fb.postStatus(params.status);
+                }
+                break;
+            case ENDPOINT_ACTION.SOCIAL_IG:
+                socialPost.setIG(params.caption, params.image, params.video, params.cover_photo);
+                let igAcc = account.accounts.ig;
+                //TODO: fix Instagram package error
+                //TODO: post with image
+                //TODO: post with video
+                break;
+            case ENDPOINT_ACTION.SOCIAL_LI:
+                socialPost.setLI(params.comment, params.title, params.desc, params.url, params.image_url);
+                let liAcc = account.accounts.li;
+                let li = new Linkedin(liAcc.username, liAcc.password);
+                result = li.createPost(params.comment, params.title, params.desc, params.url, params.image_url);
+                break;
+            case ENDPOINT_ACTION.SOCIAL_PI:
+                let piAcc = account.accounts.pi;
+                let pi = new Pinterest(piAcc.clientId, piAcc.clientSecret, piAcc.username, piAcc.accessToken);
+                if (params.type == 'board') {
+                    socialPost.setPIBoard(params.name, params.desc);
+                    result = pi.createBoard(params.name, params.desc);
+                } else if (params.type == 'pin') {
+                    socialPost.setPIPin(params.board, params.note, params.link, params.image, params.image_url);
+                    let image = (params.image) ? true : null;// TODO: pin with image
+                    result = pi.createPin(params.board, params.note, params.link, image, params.image_url);
+                }
+                break;
+            case ENDPOINT_ACTION.SOCIAL_TW:
+                socialPost.setTW(params.status, params.image);
+                let twAcc = account.accounts.tw;
+                let tw = new Twitter(twAcc.consumerKey, twAcc.consumerSecret, twAcc.accessKey, twAcc.accessSecret);
+                let image = (params.image) ? true : null;//TODO: post with image
+                if (image) result = tw.createTweet(params.status, image);
+                else result = tw.createTweet(params.status);
+                break;
+        }
+
+        if (result) {
+            socialPost.setResult(result);
+            socialPost.flush();
+            if (result.success) {
+                let charge = this.chargeAccount(price);
+                return {
+                    success: charge.success,
+                    code: 200,
+                    data: charge.success ? 'Social posted processed successfully' : charge.error
+                };
+            }
+        }
+
+        return {
+            success: false,
+            code: 200,
+            data: 'Social post could not be processed'
         };
     }
 }
