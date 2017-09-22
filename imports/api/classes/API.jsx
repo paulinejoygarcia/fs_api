@@ -1,8 +1,9 @@
 import { ENDPOINT, METHOD, MAX_API_LIFETIME } from './Const';
 import { Enc } from './Encryption';
+import Util from './Utilities';
 import {PushNotifDB} from '../pushNotifications';
 import moment from 'moment';
-let Future = Npm.require('fibers/future');
+
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
         this.api = api;
@@ -29,26 +30,44 @@ export default class API {
             if (code && (code = code.split(':')).length == 4) {
                 let accountId = code[0];
                 let apiSecret = code[1];
-                let time = parseInt(code[2]);
-                let ipAddress = code[3];
-                if (accountId === this.accountId && this.secret === apiSecret && this.ipAddress === ipAddress) {
-                    return (time - moment().valueOf()) > 0;
+                let query = "SELECT `id` FROM `accounts` WHERE `account_id`=? AND `secret`=?";
+                let result = this.databaseConnection.selectOne(query, [accountId, apiSecret]);
+                if (result) {
+                    let time = parseInt(code[2]);
+                    let ipAddress = this.enc.XoR(code[3], time);
+                    if (accountId === this.accountId && this.secret === apiSecret && this.ipAddress === ipAddress) {
+                        return (time - moment().valueOf()) > 0;
+                    }
                 }
             }
         }
         return false;
     }
-    doProcess(method, body, dbConnection) {
+    doProcess(method, body) {
         switch (this.endpoint) {
-            case ENDPOINT.AUTH:
-                let time = moment().add(MAX_API_LIFETIME, 'hour').valueOf();
-                return {
-                    success: true,
-                    code: 200,
-                    data: {
-                        code: this.enc.Encrypt([this.accountId, this.secret, time, this.ipAddress].join(':'))
+            case ENDPOINT.AUTH: {
+                let query = "SELECT `api`, `secret` FROM `accounts` WHERE `account_id`=?";
+                let result = this.databaseConnection.selectOne(query, this.accountId);
+                if (result) {
+                    let testCipher = Util.encodeBase64(this.enc.XoR(this.api, this.accountId));
+                    if (testCipher == result.secret && result.secret == this.secret) {
+                        let time = moment().add(MAX_API_LIFETIME, 'hour').valueOf();
+                        let encIp = this.enc.XoR(this.ipAddress, time);
+                        return {
+                            success: true,
+                            code: 200,
+                            data: {
+                                code: this.enc.Encrypt([this.accountId, result.secret, time, encIp].join(':'))
+                            }
+                        }
                     }
                 }
+                return {
+                    success: false,
+                    code: 404,
+                    error: 'Account not found!'
+                }
+            }
             case ENDPOINT.APP:
                 let values = {
                     accountid: '13',
@@ -94,7 +113,8 @@ export default class API {
                     'disposition,' +
                     'debit as price,' +
                     'uniqueid as call_id' +
-                    ' FROM cdrs WHERE accountid = ?' +
+                    ' FROM cdrs WHERE accountid = ' +
+                    '(SELECT id from accounts WHERE account_id = ?)' +
                     ' ORDER BY callstart DESC' +
                     (body.limit?' LIMIT '+body.limit:'');
                 return {
@@ -118,8 +138,8 @@ export default class API {
                             data: data
                         }
                     case METHOD.POST:
-                        query = 'SELECT balance from accounts WHERE number = ?';
-                        let select = dbConnection.selectOne(query,[this.accountId]);
+                        query = 'SELECT balance from accounts WHERE account_id = ?';
+                        let select = this.databaseConnection.selectOne(query,[this.accountId]);
                         if(select) {
                             if(parseFloat(select.balance) >= parseFloat(body.price)) {}
                             else return {
@@ -132,14 +152,35 @@ export default class API {
                                 data: 'Could not retrieve account balance'
                             };
                         }
+                        let insertedId =
                         body.account_id = this.accountId;
+                        if(insertedId = PushNotifDB.insert(body))
+                            //I will put it here..
+                            console.log("test charging");
                         return {
                             success: false,
                             code:200,
-                            data: PushNotifDB.insert(body)
+                            data: insertedId
                         };
                         break;
                 }
+                break;
+
+            case ENDPOINT.NUMBER:
+                return {
+                    success: true,
+                    code: 200,
+                    data: 'number endpoint'
+                }    
+                break;
+
+            case ENDPOINT.SOCIAL:
+                return {
+                    success: true,
+                    code: 200,
+                    data: 'social endpoint'
+                }
+                break;  
         }
         return { success: false, code: 404, error: 'Invalid request!' };
     }

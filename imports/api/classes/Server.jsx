@@ -1,7 +1,7 @@
 import API from './API';
 import MySqlWrapper from './MySqlWrapper';
 import Util from './Utilities';
-import { ENDPOINT, METHOD } from './Const';
+import { ENDPOINT, ENDPOINT_LIST, SUBENDPOINT_LIST, METHOD } from './Const';
 
 export default class Server {
     constructor() {
@@ -62,7 +62,7 @@ export default class Server {
                 }
 
                 api.setEndpoint(endpoint, subEndpoint, extEndpoint);
-                result = api.doProcess(request.method, data.body, this.dbConnection);
+                result = api.doProcess(request.method, data.body);
                 data = { ...data, ...result };
                 retval = { ...retval, ...result };
             }
@@ -131,6 +131,8 @@ export default class Server {
             case ENDPOINT.APP:
 			case ENDPOINT.VOICE:
 			case ENDPOINT.PUSH:
+            case ENDPOINT.NUMBER:
+            case ENDPOINT.SOCIAL:
                 if (!retval.body.accessCode) {
                     retval.code = 404; // Forbidden
                     retval.error = 'Missing `accessCode` access denied!';
@@ -138,59 +140,44 @@ export default class Server {
                     return retval;
                 }
         }
+        if (ENDPOINT_LIST[endpoint]) {
+            if (!ENDPOINT_LIST[endpoint][method]) {
+                retval.code = 405;
+                retval.header = { 'Allow': Object.keys(ENDPOINT_LIST[endpoint]).join(',') };
+                retval.error = 'Method not allowed!';
+                retval.success = false;
+                return retval;
+            }
 
-        // method check
-        switch (endpoint) {
-            case ENDPOINT.AUTH:
-                if (method === METHOD.GET) {
+            if (SUBENDPOINT_LIST[endpoint]) {
+                let subendpoint = params.sub;
+                if (subendpoint && !SUBENDPOINT_LIST[endpoint][subendpoint]) {
+                    retval.code = 404;
+                    retval.error = `Subendpoint not found: ${subendpoint}`;
+                    retval.success = false;
+                    if (isNaN(params.accountSid)) {
+                        retval.code = 404;
+                        retval.error = 'Account not found!';
+                        retval.success = false;
+                    }
                     return retval;
                 }
-                retval.header = { 'Allow': 'GET' };
-                retval.code = 405; // Method not allowed
-                retval.error = 'Method not allowed!';
-                retval.success = false;
-                break;
-            case ENDPOINT.APP:
-                switch (method) {
-                    case METHOD.GET:
-                    case METHOD.POST:
-                    case METHOD.PUT:
+                if (subendpoint && SUBENDPOINT_LIST[endpoint][subendpoint]) {
+                    if (!SUBENDPOINT_LIST[endpoint][subendpoint][method]) {
+                        retval.code = 405;
+                        retval.header = { 'Allow': Object.keys(SUBENDPOINT_LIST[endpoint][subendpoint]).join(',') };
+                        retval.error = 'Method not allowed!';
+                        retval.success = false;
                         return retval;
+                    }
                 }
-                retval.header = { 'Allow': 'GET, POST, PUT' };
-                retval.code = 405; // Method not allowed
-                retval.error = 'Method not allowed!';
-                retval.success = false;
-                break;
-			case ENDPOINT.VOICE:
-                if (method === METHOD.GET) {
-                    return retval;
-                }
-                retval.header = { 'Allow': 'GET' };
-                retval.code = 405; // Method not allowed
-                retval.error = 'Method not allowed!';
-                retval.success = false;
-                break;
-			case ENDPOINT.PUSH:
-                switch (method) {
-                    case METHOD.GET:
-                    case METHOD.POST:
-                        if(!retval.icon)
-                            retval.icon = null;
-                        if(!retval.action)
-                            retval.action = null;
-                        return retval;
-                }
-                retval.header = { 'Allow': 'GET, POST' };
-                retval.code = 405; // Method not allowed
-                retval.error = 'Method not allowed!';
-                retval.success = false;
-                break;
-            default:
-                retval.code = 404; // Request not found    
-                retval.error = 'Endpoint not found!';
-                retval.success = false;
+            }
+        } else {
+            retval.code = 404; // Request not found    
+            retval.error = 'Endpoint not found!';
+            retval.success = false;
         }
+        
         return retval;
     }
 }
