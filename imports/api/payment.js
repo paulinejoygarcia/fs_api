@@ -27,7 +27,7 @@ if (Meteor.isServer) {
                 return CCInfoDB.insert(data);
             }
         } catch (err) {
-            console.log('method[%s]: %s.', PaymentDetails, err.message);
+            showError('method[%s]: %s.', PaymentDetails, err.message);
             return { error: err.message };
         }
     };
@@ -59,11 +59,11 @@ if (Meteor.isServer) {
                     });
                     //server.dbConnection.update('accounts', { newBalance }, `id=${this.accountData.id}`);
                 } else {
-                    console.log(charge);
+                   return charge
                 }
             }
         } catch (err) {
-            console.log('method[%s]: %s.', AddCredit, err.message);
+            showError('method[%s]: %s.', AddCredit, err.message);
             return { error: err.message };
         }
     };
@@ -72,7 +72,7 @@ if (Meteor.isServer) {
             check(this.userId, String);
             return CCInfoDB.find({user: this.userId});
         } catch (err) {
-            console.log('publish[%s]: %s.', CreditCardInfoPub, err.message);
+            showError('publish[%s]: %s.', CreditCardInfoPub, err.message);
             return [];
         }
     });
@@ -81,7 +81,7 @@ if (Meteor.isServer) {
             check(this.userId, String);
             return BillingInfoDB.find({user: this.userId});
         } catch (err) {
-            console.log('publish[%s]: %s.', InvoicesInfoPub, err.message);
+            showError('publish[%s]: %s.', InvoicesInfoPub, err.message);
             return [];
         }
     });

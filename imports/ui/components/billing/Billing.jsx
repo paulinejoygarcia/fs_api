@@ -21,7 +21,6 @@ class Billing extends Component {
     }
 
     onToken(token) {
-        console.log('creating');
         this.setState({ isLoading: true });
         Meteor.call(payment.PaymentDetails, token, (err, result) => {
             if (err) alert(err);
