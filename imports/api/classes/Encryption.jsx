@@ -3,6 +3,7 @@ import Util from './Utilities';
 export const Enc = (key) => {
     return new Encryption(key);
 };
+
 class Encryption {
     constructor(key) {
         this.key = key;
@@ -14,6 +15,7 @@ class Encryption {
             0x38, 0x46, 0x39, 0x2b, 0x2f];
 
     }
+
     toByte(long) {
         let byteArray = [0];
         for (let index = 0; index < byteArray.length; index++) {
@@ -23,6 +25,7 @@ class Encryption {
         }
         return byteArray[0];
     }
+
     Ex(in_, retval, len) {
         let vv1 = [];
         vv1[0] = String.fromCharCode(this.toByte(this.box[in_[0] >> 2]));
@@ -32,6 +35,7 @@ class Encryption {
         vv1[4] = '\0';
         return retval + vv1.join('').replace(/\0/g, '');
     }
+
     Dex(in_) {
         let retval = [];
         retval[0] = String.fromCharCode(this.toByte(in_[0] << 2 | in_[1] >> 4));
@@ -40,6 +44,7 @@ class Encryption {
         retval[3] = '\0';
         return retval.join('').replace(/\0/g, '');
     }
+
     strchr(arr, key) {
         for (let i = 0; i < arr.length; i++)
             if (arr[i] === key) {
@@ -47,6 +52,7 @@ class Encryption {
             }
         return null;
     }
+
     enc(text) {
         let retval = "", in_ = [], i, vvv1 = 0, j = 0;
         while (text.length > j) {
@@ -55,7 +61,8 @@ class Encryption {
                 try {
                     in_[i] = text.charCodeAt(j);
                     if (in_[i] > 0) {
-                        vvv1++; j++;
+                        vvv1++;
+                        j++;
                     }
                 }
                 catch (e) {
@@ -68,6 +75,7 @@ class Encryption {
         }
         return retval;
     };
+
     dec(text) {
         let retval = "", c, phase = 0, p, in_ = [0, 0, 0, 0];
 
@@ -88,6 +96,7 @@ class Encryption {
         }
         return retval;
     }
+
     Encrypt(plaintext) {
         let ex = plaintext;
         for (let x = 0; x < 2; x++) {
@@ -97,6 +106,7 @@ class Encryption {
         ex = this.XoR(ex, this.key);
         return Util.encodeBase64(ex);
     }
+
     Decrypt(cipher) {
         cipher = Util.decodeBase64(cipher);
         if (cipher) {
@@ -109,6 +119,7 @@ class Encryption {
         }
         return cipher;
     }
+
     XoR(to, from) {
         var retval = [];
         if (to && from) {

@@ -1,4 +1,8 @@
 import path from 'path';
+import npmFS from 'fs';
+import npmFuture from 'fibers/future';
+import npmFiber from 'fibers';
+
 let basepath = path.resolve('.');
 let separator = '\\';
 if (process.env.OS && process.env.OS === 'Windows_NT') {
@@ -17,5 +21,7 @@ PATH = {
     GIT: `${basepath}.git${separator}`,
     METEOR: `${basepath}.meteor${separator}`
 };
+
 Meteor.settings.config = Meteor.settings.config || {};
 Meteor.settings.public = Meteor.settings.public || {};
+Meteor.GV = gv || {};

@@ -14,6 +14,7 @@ class Utilities {
             return new Buffer(ciphertxt, 'base64').toString();
         return ciphertxt;
     }
+
     encodeBase64(plaintxt) {
         if (Meteor.isClient)
             return btoa(plaintxt);
@@ -22,9 +23,11 @@ class Utilities {
         }
         return plaintxt
     }
+
     random(max, min) {
         return Math.floor(Math.random() * max) + min;
     }
+
     genRandomString(length, option) {
         let that = this;
         let retval = '';
@@ -43,6 +46,7 @@ class Utilities {
         })();
         return retval;
     }
+
     formatNumber(input, format) {
         if (input) {
             let digits = input.replace(/\D/g, '');
@@ -55,6 +59,7 @@ class Utilities {
         }
         return input;
     }
+
     numberValidator(input) {
         if (!input) return { isValid: false };
         let check = parsePhoneNumber(input);
@@ -74,6 +79,7 @@ class Utilities {
         }
         return { isValid: false };
     }
+
     encodeUTF8(string) {
         if (!string)
             return '';
@@ -83,6 +89,7 @@ class Utilities {
             return string;
         }
     }
+
     decodeUTF8(string) {
         if (!string)
             return '';
@@ -92,11 +99,13 @@ class Utilities {
             return string;
         }
     }
+
     timeFromNow(date) {
         var a = moment(date);
         var b = moment();
         return a.from(b);
     }
+
     objectEquals(x, y) {
         if (x instanceof Function) {
             if (y instanceof Function) {
@@ -104,16 +113,29 @@ class Utilities {
             }
             return false;
         }
-        if (x === null || x === undefined || y === null || y === undefined) { return x === y; }
-        if (x === y || x.valueOf() === y.valueOf()) { return true; }
-        if (x instanceof Date) { return false; }
-        if (y instanceof Date) { return false; }
-        if (!(x instanceof Object)) { return false; }
-        if (!(y instanceof Object)) { return false; }
+        if (x === null || x === undefined || y === null || y === undefined) {
+            return x === y;
+        }
+        if (x === y || x.valueOf() === y.valueOf()) {
+            return true;
+        }
+        if (x instanceof Date) {
+            return false;
+        }
+        if (y instanceof Date) {
+            return false;
+        }
+        if (!(x instanceof Object)) {
+            return false;
+        }
+        if (!(y instanceof Object)) {
+            return false;
+        }
 
         let p = Object.keys(x);
         return Object.keys(y).every((i) => p.indexOf(i) !== -1) ? p.every((i) => this.objectEquals(x[i], y[i])) : false;
     }
+
     setupHandler(instance, target, cursor, transform) {
         let handle = cursor.observe({
             added: (doc) => {
@@ -136,22 +158,27 @@ class Utilities {
             handle.stop();
         });
     }
+
     checkEmailFormat(string) {
         let re = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i;
         return re.test(string);
     }
+
     checkIfHTML(string) {
         return /<[a-z][\s\S]*>/i.test(string);
     }
+
     capitalize(string) {
         if (!string)
             return '';
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
+
     checkUnicode(txt) {
         let check = txt.replace(/[a-z0-9`~!@#$%^&*()_|+\-=?;:'", .<>\{\}\[\]\\\/]/gi, '');
         return !(!check.length);
     }
+
     affixResponse(instance, statusCode, headers, body) {
         if (instance) {
             instance.statusCode = statusCode;
@@ -162,6 +189,7 @@ class Utilities {
             instance.end();
         }
     }
+
     checkHooks(data, hooks) {
         if (typeof data === 'object') {
             for (let i = 0; i < hooks.length; i++) {
@@ -172,6 +200,7 @@ class Utilities {
         }
         return false;
     }
+
     downloadFile(url, saveto, callback, retry = 1) {
         if (Meteor.isServer) {
             let protocol = null;
@@ -250,6 +279,7 @@ class Utilities {
             }
         }
     }
+
     formatArgs(arg) {
         let keys = Object.keys(arg);
         keys.splice(0, 1);
@@ -264,26 +294,33 @@ class Utilities {
             return '';
         return retval;
     }
+
     log() {
         if (console) {
             console.log.apply(console, arguments);
         }
     }
+
     showNotice() {
         this.Util.log.apply(this, [`${"[Notice]: ".white}${arguments[0]}`].concat(this.Util.formatArgs(arguments)));
     }
+
     showStatus() {
         this.Util.log.apply(this, [`${"[Status]".green}${":".white} ${arguments[0]}`].concat(this.Util.formatArgs(arguments)));
     }
+
     showError() {
         this.Util.log.apply(this, [`${"[Error]".red}${":".white} ${arguments[0]}`].concat(this.Util.formatArgs(arguments)));
     }
+
     showWarning() {
         this.Util.log.apply(this, [`${"[Warning]".yellow}${":".white} ${arguments[0]}`].concat(this.Util.formatArgs(arguments)));
     }
+
     showDebug() {
         this.Util.log.apply(this, [`${"[Debug]".magenta}${":".white} ${arguments[0]}`].concat(this.Util.formatArgs(arguments)));
     }
+
     flattenObj(object, separator = '.') {
         let isValidObject = value => {
             if (!value) {
@@ -305,6 +342,7 @@ class Utilities {
         }
         return Object.assign({}, walker(object))
     }
+
     httpRequest(url, method, params, data, headers) {
         if (method.toLowerCase() != 'get' && method.toLowerCase() != 'post') {
             return {
@@ -330,4 +368,5 @@ class Utilities {
         }
     }
 }
+
 export default Util = new Utilities();

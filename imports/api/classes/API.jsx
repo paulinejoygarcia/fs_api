@@ -10,6 +10,8 @@ import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
 import SocialCommentManager, { SocialCommentDB } from './SocialCommentManager';
 import SocialPostManager, { SocialPostDB } from './SocialPostManager';
 import moment from 'moment';
+import MessageCtrl from './controller/Message';
+import ScreenshotsCtrl from './controller/Screenshot';
 
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
@@ -63,11 +65,13 @@ export default class API {
         if (wrapper && wrapper.isConnected())
             this.databaseConnection = wrapper;
     }
+
     setEndpoint(endpoint, sub, ext) {
         this.endpoint = endpoint;
         this.subEndpoint = sub;
         this.extEndpoint = ext;
     }
+
     checkAccessCode() {
         if (this.accessCode && this.databaseConnection && this.databaseConnection.isConnected()) {
             let code = this.enc.Decrypt(this.accessCode);
@@ -88,8 +92,43 @@ export default class API {
         }
         return false;
     }
-    doProcess(method, body) {
-        delete body.accessCode;
+
+    getAccountBalance() {
+        let balance = 0;
+        if (this.accountData)
+            balance = parseFloat(this.accountData.balance) + parseFloat(this.accountData.posttoexternal) * parseFloat(this.accountData.credit_limit);
+        return balance;
+    }
+
+    isAccountBillable(price) {
+        return (this.getAccountBalance() >= parseFloat(price));
+    }
+
+    updateAccountBalance(amount, paymentType = 'debit') {
+        if (this.accountData && parseFloat(amount)) {
+            let balance = parseFloat(this.accountData.balance) - parseFloat(amount);
+            if (paymentType == 'credit')
+                balance = parseFloat(this.accountData.balance) + parseFloat(amount);
+            return this.databaseConnection.update('accounts', { balance }, `id=${this.accountData.id}`);
+        }
+    }
+
+    didAccountOwner(number) {
+        let query = 'SELECT dids.accountid as aid, accounts.number as anum FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? ';
+        let result = this.databaseConnection.selectOne(query, [number]);
+        if (result) {
+            return {
+                success: true,
+                data: {
+                    id: result.aid,
+                    accountId: result.anum,
+                }
+            }
+        }
+        return result;
+    }
+
+    doProcess(method, body, smtpSend, smppSend, processRequestUrl) {
         switch (this.endpoint) {
             case ENDPOINT.AUTH: {
                 let query = "SELECT `api`, `secret` FROM `accounts` WHERE `account_id`=?";
@@ -168,29 +207,15 @@ export default class API {
                         break;
                     case METHOD.POST:
                     case METHOD.PUT: {
-                        let query = "SELECT id FROM `fs_applications` WHERE `friendly_name` = ?";
-                        let dupe = this.databaseConnection.selectOne(query, body.friendly_name);
-                        if (dupe && dupe.id !== parseInt(this.subEndpoint)) {
-                            return { success: false, code: 400, data: `${body.friendly_name} already exists!` }
-                        }
-                        body.accountid = this.accountData.id;
-                        if (this.subEndpoint) {
-                            let result = this.databaseConnection.update('fs_applications', body, `id=${parseInt(this.subEndpoint)}`);
-                            if (result) {
-                                return { success: true, code: 200, data: { id: parseInt(this.subEndpoint), update: result } }
-                            }
-                            return { success: false, code: 400, data: `Application id '${this.subEndpoint}' not found!` }
-                        } else {
-                            let result = this.databaseConnection.insert('fs_applications', body);
-                            if (result) {
-                                return { success: true, code: 200, data: { id: result } }
-                            }
-                            return { success: false, code: 500, data: 'Something went wrong!' }
-                        }
+
                     }
                 }
+                return {
+                    success: true,
+                    code: 200,
+                    data: data
+                }
                 break;
-
             case ENDPOINT.FAX:
                 switch (method) {
                     case METHOD.GET:
@@ -199,7 +224,6 @@ export default class API {
                         return this.faxSender(body.to, body.from, body.files);
                 }
                 break;
-
             case ENDPOINT.NUMBER:
                 switch (this.subEndpoint) {
                     case ENDPOINT_ACTION.NUMBER_AVAILABLE:
@@ -210,6 +234,7 @@ export default class API {
                         return this.numberIncoming(body.did_id, body.app_id);
                 }
                 break;
+
             case ENDPOINT.SOCIAL:
                 switch (this.subEndpoint) {
                     case ENDPOINT_ACTION.SOCIAL_ACCOUNT:
@@ -223,6 +248,58 @@ export default class API {
                     success: true,
                     code: 200,
                     data: 'social endpoint'
+                }
+                break;
+
+            case ENDPOINT.MESSAGE:
+                switch (method) {
+                    case METHOD.POST:
+                        try {
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            let res = ctrl.insert();
+                            if (res.success) res = ctrl.send();
+                            return res;
+                        } catch (err) {
+                            console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
+                        }
+                        break;
+                    case METHOD.GET:
+                        try {
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            return {
+                                success: true,
+                                code: 200,
+                                data: ctrl.list()
+                            };
+                        } catch (err) {
+                            console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
+                        }
+                        break;
+                    default:
+                        return {
+                            success: false,
+                            code: 404,
+                            data: {}
+                        };
+                }
+                break;
+            case ENDPOINT.VIDEO:
+                switch (method) {
+                    case METHOD.POST:
+                        switch (this.subEndpoint) {
+                            case ENDPOINT_ACTION.VIDEO_SCREENSHOT:
+                                const ctrl = new ScreenshotsCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                                let res = ctrl.insert();
+                                if (res.success) res = ctrl.send();
+                                return res;
+                        }
+                        break;
+                    default:
+                        return {
+                            success: false,
+                            code: 404,
+                            data: {}
+                        };
                 }
                 break;
         }

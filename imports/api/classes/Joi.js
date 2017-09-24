@@ -27,20 +27,18 @@ class Joi {
             }
         }
 
-        if (validValues && validValues.length) {
+        if (validValues.length) {
             type = type.valid(validValues);
         }
 
-        if (invalidValues && invalidValues.length) {
+        if (invalidValues.length) {
             type = type.invalid(invalidValues);
         }
-
         if (defaultNull)
             type = type.allow(null).default(null);
 
         if (allowEmpty)
             type = type.allow('').default('');
-
         return type;
     }
 
@@ -53,6 +51,14 @@ class Joi {
         return type;
     }
 
+    object(isRequired = false) {
+        let type = npmJoi.object();
+
+        if (isRequired)
+            type = type.required();
+
+        return type;
+    }
     file(label = 'file', defaultNull = true) {
         let file = npmJoi.object().keys({
             filename: npmJoi.string().required().options({ language: { any: { required: 'should have a filename' } } }).label(label),
@@ -63,7 +69,6 @@ class Joi {
             file.allow(null).default(null);
         return file;
     }
-
     array(type, min = 0) {
         let array = npmJoi.array().items(type);
         if (min && parseInt(min))
