@@ -28,6 +28,9 @@ class Menu extends Component {
                     },
                     {
                         name: 'Profile', route: ROUTE_COMPONENT.ACCOUNT.PROFILE
+                    },
+                    {
+                        name: 'Billing', route: ROUTE_COMPONENT.ACCOUNT.BILLING
                     }
                 ]
             },

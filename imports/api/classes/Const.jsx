@@ -4,7 +4,8 @@ export const ROUTE_COMPONENT = {
     DASHBOARD: 'dashboard',
     ACCOUNT: {
         INFO: 'info',
-        PROFILE: 'profile'
+        PROFILE: 'profile',
+        BILLING: 'billing'
     }
 }
 

@@ -18,7 +18,15 @@
             "port": 3306,
             "user": "root",
             "password": "",
-            "database": "database"
+            "database": "db"
+        }
+    },
+    "stripe": {
+        "test": {
+            "private": "sk_test..."
+        },
+        "live": {
+            "private": "sk_live..."
         }
     },
     "freeswitch": {
