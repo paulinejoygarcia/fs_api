@@ -1,5 +1,13 @@
 export const MAX_API_LIFETIME = 4; // 4 hours
 
+export const ROUTE_COMPONENT = {
+    DASHBOARD: 'dashboard',
+    ACCOUNT: {
+        INFO: 'info',
+        PROFILE: 'profile'
+    }
+}
+
 export const METHOD = {
     GET: 'GET',         //The GET method requests a representation of the specified resource. Requests using GET should only retrieve data.
     HEAD: 'HEAD',       //The HEAD method asks for a response identical to that of a GET request, but without the response body.
@@ -31,6 +39,11 @@ export const ENDPOINT_ACTION = {
     SOCIAL_ACCOUNT: 'account',
     SOCIAL_COMMENT: 'comment',
     SOCIAL_POST: 'post',
+    SOCIAL_FB: 'fb',
+    SOCIAL_IG: 'ig',
+    SOCIAL_LI: 'li',
+    SOCIAL_PI: 'pi',
+    SOCIAL_TW: 'tw',
     MESSAGE_SMS: 'sms',
     MESSAGE_MMS: 'mms',
     VIDEO_SCREENSHOT: 'screenshot'
@@ -46,13 +59,14 @@ export const ENDPOINT_CHECKPOINT = {
     },
     [ENDPOINT.NUMBER]: {
         [ENDPOINT_ACTION.NUMBER_AVAILABLE]: [METHOD.GET],
-        [ENDPOINT_ACTION.NUMBER_INCOMING]: [METHOD.GET],
-        [ENDPOINT_ACTION.NUMBER_OWNED]: [METHOD.POST]
+        [ENDPOINT_ACTION.NUMBER_INCOMING]: [METHOD.POST],
+        [ENDPOINT_ACTION.NUMBER_OWNED]: [METHOD.GET]
     },
     [ENDPOINT.PUSH]: [METHOD.GET, METHOD.POST],
     [ENDPOINT.SOCIAL]: {
         [ENDPOINT_ACTION.SOCIAL_ACCOUNT]: [METHOD.POST],
-        [ENDPOINT_ACTION.SOCIAL_COMMENT]: [METHOD.POST]
+        [ENDPOINT_ACTION.SOCIAL_COMMENT]: [METHOD.POST],
+        [ENDPOINT_ACTION.SOCIAL_POST]: [METHOD.POST]
     },
     [ENDPOINT.VIDEO]: {
         [ENDPOINT_ACTION.VIDEO_SCREENSHOT]: [METHOD.GET, METHOD.POST]

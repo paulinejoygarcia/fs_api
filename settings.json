@@ -1,4 +1,15 @@
 {
+    "public": {
+        "config": {
+            "title": "uConnectIT"
+        }
+    },
+    "collections": {
+        "fax": "faxes",
+        "socialAccount": "social_accounts",
+        "socialComment": "social_comments",
+        "socialPost": "social_posts"
+    },
     "astpp": {
         "apiKey": "",
         "apiSecret": "",
