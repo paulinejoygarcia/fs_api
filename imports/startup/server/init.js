@@ -8,4 +8,5 @@ Meteor.startup(() => {
     console.log("\\__,_/".red + "\\____/\\____/_/ /_/_/ /_/\\___/\\___/\\__/\\___/\\__,_/___/ /_/  " + "  /_/  |_/_/   /___/   ".cyan);
 
     showStatus('Initializing server setup...');
+
 });

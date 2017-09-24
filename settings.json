@@ -14,11 +14,19 @@
         "apiKey": "",
         "apiSecret": "",
         "db": {
-            "host": "localhost",
+            "host": "104.131.46.31",
             "port": 3306,
-            "user": "root",
-            "password": "",
-            "database": "database"
+            "user": "tmqDevs",
+            "password": "y_CHudrapHet8utu",
+            "database": "astpp"
+        }
+    },
+    "stripe": {
+        "test": {
+            "private": "sk_test_36jFRKjQANAHcoZeljkc0uX2"
+        },
+        "live": {
+            "private": "sk_live..."
         }
     },
     "freeswitch": {

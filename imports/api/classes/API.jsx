@@ -6,6 +6,7 @@ import Linkedin from './Linkedin';
 import Pinterest from './Pinterest';
 import Twitter from './Twitter';
 import FaxManager, { FaxDB } from './FaxManager';
+import { CCInfoDB, BillingInfoDB } from '../payment';
 import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
 import SocialCommentManager, { SocialCommentDB } from './SocialCommentManager';
 import SocialPostManager, { SocialPostDB } from './SocialPostManager';
@@ -23,6 +24,7 @@ export default class API {
         this.enc = Enc(this.secret);
         this.databaseConnection = null;
     }
+
     getAccountBalance() {
         let balance = 0;
         if (this.accountData)
@@ -30,20 +32,29 @@ export default class API {
 
         return balance;
     }
+
     isAccountBillable(price) {
         if (this.getAccountBalance() >= parseFloat(price)) {
             return true;
         }
         return false;
     }
+
     updateAccountBalance(amount, paymentType = 'debit') {
         if (this.accountData && parseFloat(amount)) {
             let balance = parseFloat(this.accountData.balance) - parseFloat(amount);
             if (paymentType == 'credit')
                 balance = parseFloat(this.accountData.balance) + parseFloat(amount);
+            // CCInfoDB.update({ userId: userId }, { $inc: { credit: (0 - amount) } });
+            // BillingInfoDB.update({ userId: userId }, {
+            //     $set: {
+            //         description: `[UCI API] Payment for API usage Amount: ${amount.toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,')}`
+            //     }
+            // });
             return this.databaseConnection.update('accounts', { balance }, `id=${this.accountData.id}`);
         }
     }
+
     chargeAccount(price) {
         let result = {
             success: false,
@@ -59,15 +70,18 @@ export default class API {
         }
         return result;
     }
+
     setDBConnection(wrapper) {
         if (wrapper && wrapper.isConnected())
             this.databaseConnection = wrapper;
     }
+
     setEndpoint(endpoint, sub, ext) {
         this.endpoint = endpoint;
         this.subEndpoint = sub;
         this.extEndpoint = ext;
     }
+
     checkAccessCode() {
         if (this.accessCode && this.databaseConnection && this.databaseConnection.isConnected()) {
             let code = this.enc.Decrypt(this.accessCode);
@@ -88,6 +102,7 @@ export default class API {
         }
         return false;
     }
+
     doProcess(method, body) {
         delete body.accessCode;
         switch (this.endpoint) {
@@ -177,9 +192,17 @@ export default class API {
                         if (this.subEndpoint) {
                             let result = this.databaseConnection.update('fs_applications', body, `id=${parseInt(this.subEndpoint)}`);
                             if (result) {
-                                return { success: true, code: 200, data: { id: parseInt(this.subEndpoint), update: result } }
+                                return {
+                                    success: true,
+                                    code: 200,
+                                    data: { id: parseInt(this.subEndpoint), update: result }
+                                }
                             }
-                            return { success: false, code: 400, data: `Application id '${this.subEndpoint}' not found!` }
+                            return {
+                                success: false,
+                                code: 400,
+                                data: `Application id '${this.subEndpoint}' not found!`
+                            }
                         } else {
                             let result = this.databaseConnection.insert('fs_applications', body);
                             if (result) {

@@ -4,7 +4,8 @@ export const ROUTE_COMPONENT = {
     DASHBOARD: 'dashboard',
     ACCOUNT: {
         INFO: 'info',
-        PROFILE: 'profile'
+        PROFILE: 'profile',
+        BILLING: 'billing'
     }
 }
 
@@ -73,3 +74,7 @@ export const ENDPOINT_CHECKPOINT = {
     },
     [ENDPOINT.VOICE]: [METHOD.GET]
 }
+
+export const STRIPE = {
+    PUBLIC: "pk_test_WfftiwPoPXztjgJuInczhsQD"
+};
