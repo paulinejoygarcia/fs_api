@@ -74,7 +74,3 @@ export const ENDPOINT_CHECKPOINT = {
     },
     [ENDPOINT.VOICE]: [METHOD.GET]
 }
-
-export const STRIPE = {
-    PUBLIC: "pk_test_WfftiwPoPXztjgJuInczhsQD"
-};
