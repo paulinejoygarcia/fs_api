@@ -95,6 +95,16 @@ class Menu extends Component {
                     <div className="site-menubar-inner">
                         <ul className="site-menu">
                             {this.renderMenuList()}
+                            <li>
+                                <a href="#" onClick={() => {
+                                    Meteor.logout((err,data)=>{
+                                        console.log("err",err,data);
+                                    });
+                                }}>
+                                    <i className="menu-icon zmdi zmdi-hc-lg zmdi-lock-outline" />
+                                    <span className="menu-text">Logout</span>
+                                </a>
+                            </li>
                         </ul>
                     </div>
                 </div>

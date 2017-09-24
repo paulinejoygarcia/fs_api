@@ -6,6 +6,7 @@ import Linkedin from './Linkedin';
 import Pinterest from './Pinterest';
 import Twitter from './Twitter';
 import FaxManager, { FaxDB } from './FaxManager';
+import UserManager  from './UserManager';
 import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
 import SocialCommentManager, { SocialCommentDB } from './SocialCommentManager';
 import SocialPostManager, { SocialPostDB } from './SocialPostManager';

@@ -19,7 +19,8 @@
             "user": "root",
             "password": "",
             "database": "database"
-        }
+        },
+        "private_key":""
     },
     "freeswitch": {
         "ip": "",

@@ -6,8 +6,6 @@ import createBrowserHistory from 'history/createBrowserHistory';
 import Main from '../../ui/components/Main';
 import NotFound from '../../ui/NotFound';
 import Reports from '../../ui/Reports.jsx';
-import Login from '../../ui/Login.jsx';
-import Register from '../../ui/Register.jsx';
 
 const customHistory = createBrowserHistory();
 let handleLoginSession = (nextState, replace, next) => {
@@ -16,6 +14,7 @@ let handleLoginSession = (nextState, replace, next) => {
   }
   next();
 }
+
 export default routes = (
   <Router history={customHistory}>
     <Switch>
