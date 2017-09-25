@@ -190,7 +190,11 @@ export default class API {
                         }
                     }
                 }
-                break;
+                return {
+                    success: true,
+                    code: 200,
+                    data
+                };
 
             case ENDPOINT.FAX:
                 switch (method) {

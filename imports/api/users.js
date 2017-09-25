@@ -2,8 +2,16 @@ import { Meteor } from 'meteor/meteor';
 import { Accounts } from 'meteor/accounts-base';
 import ASTPPCustomer from './classes/ASTPPCustomer.jsx';
 
+export const UsersSave = 'users_save';
+export const UsersSavePassword = 'users_save_password';
 export const UsersRegister = 'users_register';
 if (Meteor.isServer) {
+    functions[UsersSave] = function(first,last){
+        return Meteor.users.update({_id:Meteor.userId()},{$set:{"profile.first":first,"profile.last":last}})
+    };
+    functions[UsersSavePassword] = function(newPassword){
+        return Accounts.setPassword(Meteor.userId(), newPassword);
+    };
     functions[UsersRegister] = function(data){
         let user = {};
         user.emails = [{address:data.email,verified:true}];
@@ -12,6 +20,7 @@ if (Meteor.isServer) {
         user.password = data.password;
         let id = Accounts.createUser(user);
         let customer = new ASTPPCustomer(id);
+        customer.json.number = data.username;
         customer.json.firstName = data.first;
         customer.json.lastName = data.last;
         customer.json.email = data.email;
@@ -23,11 +32,11 @@ if (Meteor.isServer) {
         customer.setPassword(data.password);
         customer.setEntityName();
         let addedCustomer = customer.customerAdd();
-        if(!addedCustomer)
-            throw new Meteor.Error("500","Problem on saving ASTPP account");
+        //if(!addedCustomer)
+            //throw new Meteor.Error("500","Problem on saving ASTPP account");
         return addedCustomer;
     };
-        Accounts.validateLoginAttempt((data)=>{
+    Accounts.validateLoginAttempt((data)=>{
         if(data.error)
             return data.error;
         else

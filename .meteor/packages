@@ -20,10 +20,8 @@ shell-server@0.2.4            # Server-side component of the `meteor shell` comm
 http
 meteorhacks:picker
 nooitaf:colors
-twbs:bootstrap
 themeteorchef:bert
-accounts-password
 momentjs:moment
 react-meteor-data
-accounts-ui@1.1.9
 fourseven:scss
+accounts-password

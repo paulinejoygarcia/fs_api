@@ -2,7 +2,7 @@
 import PropTypes from 'prop-types';
 import { createContainer } from 'meteor/react-meteor-data';
 import React, { Component } from 'react';
-import { ROUTE_COMPONENT } from '../../api/classes/Const';
+import { ROUTE_API_DOC } from '/imports/api/classes/Const';
 import { Meteor } from 'meteor/meteor';
 
 class Menu extends Component {
@@ -11,27 +11,6 @@ class Menu extends Component {
         this.state = {
             selected: null
         };
-        this.menuList = [
-            {
-                name: 'Dashboard',
-                route: ROUTE_COMPONENT.DASHBOARD,
-                icon: 'zmdi-view-dashboard',
-                subList: []
-            },
-            {
-                name: 'Accounts',
-                route: null,
-                icon: 'zmdi-account-circle',
-                subList: [
-                    {
-                        name: 'Information', route: ROUTE_COMPONENT.ACCOUNT.INFO
-                    },
-                    {
-                        name: 'Profile', route: ROUTE_COMPONENT.ACCOUNT.PROFILE
-                    }
-                ]
-            },
-        ];
     }
     componentDidMount() {
         $(this.list).mCustomScrollbar({ theme: "dark-thick" });
@@ -43,29 +22,43 @@ class Menu extends Component {
             this.setState({ selected: name });
     }
     renderMenuList() {
-        return this.menuList.map((item, index) => {
+        let menu = this.props.list.map((item, index) => {
+            let href = '#';
+            if (item.route && item.route.charAt(0) == '/') {
+                href = item.route;
+            }
+            if (item.separator) {
+                return (<li key={index} className="menu-separator"><hr /></li>);
+            }
             return (
                 <li key={index}>
-                    <a href="#" className="submenu-toggle" onClick={(event) => {
-                        item.route ? this.props.history.replace(item.route) : this.toggleSubMenu(item.name); event.preventDefault()
+                    <a href={href} className="submenu-toggle" onClick={(event) => {
+                        if (item.route && item.route.charAt(0) != '/') {
+                            this.props.history.push(item.route);
+                            event.preventDefault();
+                        } else if (!item.route) {
+                            this.toggleSubMenu(item.name);
+                        }
                     }}>
                         <i className={`menu-icon zmdi zmdi-hc-lg ${item.icon}`} />
                         <span className="menu-text">{item.name}</span>
                         {
-                            item.subList.length > 0 ?
+                            item.subList && item.subList.length > 0 ?
                                 <i className={`menu-caret zmdi zmdi-hc-sm ${item.name == this.state.selected ? 'zmdi-chevron-down' : 'zmdi-chevron-right'}`}></i>
                                 :
                                 ''
                         }
                     </a>
-                    <ul className="submenu" style={{ display: item.name == this.state.selected ? 'block' : 'none' }}>
+                    <ul className="submenu" style={{ display: item.name == this.state.selected ? 'block' : 'none', paddingLeft: '30px' }}>
                         <li className="menu-heading"><a href="javascript:void(0)">{item.name}</a></li>
                         {
-                            item.subList.map((subItem, index) => {
+                            item.subList && item.subList.map((subItem, index) => {
                                 return (
                                     <li key={index}>
                                         <a href="#" onClick={(event) => { subItem.route ? this.props.history.replace(subItem.route) : null; event.preventDefault() }}
-                                        >{subItem.name}
+                                        >
+                                            <i className={`menu-icon zmdi zmdi-hc-lg ${subItem.icon}`} />
+                                            <span className="menu-text">{subItem.name}</span>
                                         </a>
                                     </li>
                                 );
@@ -75,19 +68,16 @@ class Menu extends Component {
                 </li>
             );
         });
+        return menu;
     }
     render() {
         return (
             <aside className="site-menubar">
                 <div className="site-user">
                     <div className="media align-items-center">
-                        <a href="javascript:void(0)">
-                            {/*<img className="avatar avatar-circle" src="/img/person.PNG" alt="avatar" />*/}
-                            <img className="avatar avatar-circle" src={(this.props.user && this.props.user.profile.avatar)?"/img/"+this.props.user.profile.avatar:"/img/default.png"} alt="avatar" />
-                        </a>
                         <div className="media-body hidden-fold">
                             <h6 className="mborder-a-0">
-                                <a href="javascript:void(0)" className="username">{this.props.user?this.props.user.profile.first + " " + this.props.user.profile.last:""}</a>
+                                <a href="javascript:void(0)" className="username">REST API</a>
                             </h6>
                         </div>
                     </div>
@@ -96,16 +86,6 @@ class Menu extends Component {
                     <div className="site-menubar-inner">
                         <ul className="site-menu">
                             {this.renderMenuList()}
-                            <li>
-                                <a href="#" onClick={() => {
-                                    Meteor.logout((err,data)=>{
-                                        console.log("err",err,data);
-                                    });
-                                }}>
-                                    <i className="menu-icon zmdi zmdi-hc-lg zmdi-lock-outline" />
-                                    <span className="menu-text">Logout</span>
-                                </a>
-                            </li>
                         </ul>
                     </div>
                 </div>
@@ -120,6 +100,5 @@ Menu.propTypes = {
 
 export default createContainer(() => {
     return {
-        user: Meteor.user()
     };
 }, Menu);

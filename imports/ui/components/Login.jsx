@@ -28,6 +28,7 @@ export default class Login extends Component {
         return (
             <div className="container">
                 <div className="row">
+                    <div className="col-md-4" />
                     <div className="col-sm-6 col-md-4 col-md-offset-4">
                         <h1 className="text-center login-title mt100 mb10">Sign In
                             to {this.props.title || "UConnectedIt"}</h1>
@@ -42,7 +43,7 @@ export default class Login extends Component {
                                 <input type="password" ref={(e) => {
                                     this.password = e;
                                 }} className="form-control" placeholder="Password" required/>
-                                <button className="btn btn-lg bg-red-500 text-white btn-block" disabled={this.state.saving}
+                                <button className="btn bg-red-500 text-white btn-block" disabled={this.state.saving}
                                         type="submit">
                                     {this.state.saving ? <i className="fa fa-spin fa-circle-o-notch"/> : "Sign In"}
                                 </button>

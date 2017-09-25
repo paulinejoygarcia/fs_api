@@ -19,16 +19,6 @@ class Header extends Component {
                         <span className="brand-name hidden-fold">uConnectedIT</span>
                     </a>
                 </div>
-                <div className="collapse navbar-collapse">
-                    <div className="navbar-nav mr-auto"></div>
-                    <ul className="navbar-nav">
-                        <li className="nav-item dropdown">
-                            <a href="#" className="nav-link">
-                                <i className="zmdi zmdi-hc-lg zmdi-settings" />
-                            </a>
-                        </li>
-                    </ul>
-                </div>
             </nav >
         );
     }
