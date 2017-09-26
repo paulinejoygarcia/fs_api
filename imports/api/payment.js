@@ -14,10 +14,9 @@ export const RefillInvoicesInfoPub = 'refill-invoices-info-pub';
 export const CCInfoDB = new Mongo.Collection('ccInfo', { idGeneration: 'MONGO' });
 export const BillingInfoDB = new Mongo.Collection('billingInfo', { idGeneration: 'MONGO' });
 
-let functions = {};
 if (Meteor.isServer) {
 
-    let updateInvoice = function(userId, amount, type, status, description, charge = null){
+    let updateInvoice = function (userId, amount, type, status, description, charge = null) {
 
 
         let userQuery = "SELECT * FROM `accounts` WHERE `id`= ?";
@@ -153,5 +152,4 @@ if (Meteor.isServer) {
             return [];
         }
     });
-    Meteor.methods(functions);
 }

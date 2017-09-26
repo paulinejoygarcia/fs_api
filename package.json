@@ -5,7 +5,6 @@
     "start": "meteor run"
   },
   "dependencies": {
-    "assert": "^1.4.1",
     "awesome-phonenumber": "^2.1.0",
     "babel-runtime": "^6.26.0",
     "bcrypt": "^1.0.2",
@@ -15,14 +14,13 @@
     "fibers": "^1.0.15",
     "follow-redirects": "^1.2.4",
     "history": "^4.7.2",
-    "http": "0.0.0",
-    "https": "^1.0.0",
     "instagram-private-api": "^0.6.0",
     "joi": "^10.6.0",
     "meteor-node-stubs": "^0.2.11",
     "mime-types": "^2.1.16",
     "modesl": "^1.1.9",
     "moment": "^2.18.1",
+    "moment-timezone": "^0.5.13",
     "multer": "^1.3.0",
     "mysql": "^2.14.1",
     "parse-headers": "^2.0.1",
@@ -31,13 +29,14 @@
     "react-dom": "^15.6.1",
     "react-json-pretty": "^1.7.4",
     "react-router": "^4.2.0",
+    "react-stripe-checkout": "^2.6.3",
     "reactable": "^0.14.1",
     "scp2": "^0.5.0",
     "simplesmtp": "^0.3.35",
     "smpp": "^0.3.1",
     "split-sms": "^0.1.7",
+    "stripe": "^5.1.0",
     "twitter": "^1.7.1",
-    "url": "^0.11.0",
     "xml-parser": "^1.2.1"
   }
 }

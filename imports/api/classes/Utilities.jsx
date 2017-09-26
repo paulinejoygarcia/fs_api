@@ -7,9 +7,6 @@ import mime from 'mime-types';
 import fs from 'fs';
 import PhoneNumber from 'awesome-phonenumber';
 import crypto from 'crypto';
-import npmScp from 'scp2';
-import { execSync } from 'child_process';
-import future from 'fibers/future';
 
 class Utilities {
     decodeBase64(ciphertxt) {
@@ -30,7 +27,7 @@ class Utilities {
     random(max, min) {
         return Math.floor(Math.random() * max) + min;
     }
-    addDaysToDate(interval){
+    addDaysToDate(interval) {
         startdate = moment().format('MMMM Do YYYY, h:mm:ss a');
         let new_date = moment(startdate, 'MMMM Do YYYY, h:mm:ss a').add(interval, 'days');
         return new_date.format('YYYY-MM-DD HH:mm:ss');
@@ -348,55 +345,17 @@ class Utilities {
         return crypto.createHash('md5').update(s).digest('hex');
     }
 
-    pdfToTiff(src, dest) {
-        if (typeof src == 'string') src = [src];
-        const command = 'gs -q -r204x196 -g1728x2156 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=' + dest + ' ' + src.join(' ');
-        if (typeof execSync === 'function') execSync(command);
-        if (fs.existsSync(dest)) return {
-            success: true,
-            data: 'Conversion successful'
-        }
 
-        return {
-            success: false,
-            data: 'TIFF file not found'
-        };
-    }
-
-    scp(file, newName, path = '/tmp', isDownload) {
-        const fut = new future();
-        let fileName = file.split('/').pop();
-        if (newName) fileName = newName + '.' + file.split('.').pop();
-
-        let params = {
-            host: Meteor.settings.scp.host,
-            username: Meteor.settings.scp.user,
-            password: Meteor.settings.scp.pass
-        };
-        if (isDownload) {
-            params.path = file;
-            npmScp.scp(params, path, function (err) {
-                fut.return(err);
-            });
-        } else {
-            params.path = `${path}/${fileName}`;
-            npmScp.scp(file, params, function (err) {
-                fut.return(err);
-            });
-        }
-        if (fut.wait()) return false;
-        return fileName;
-    }
-}
-export function showGritter(title, text, status) {
-    if (Meteor.isClient) {
-        $.gritter.add({
-            title: title,
-            text: text,
-            class_name: status,
-            time: 10000,
-        });
-        return;
-    }
+	showGritter(title, text, status) {
+	    if (Meteor.isClient) {
+	        $.gritter.add({
+	            title: title,
+	            text: text,
+	            class_name: status,
+	            time: 10000,
+	        });
+	        return;
+	    }
+	}
 }
 export default Util = new Utilities();

@@ -3,6 +3,9 @@ import Joi from './Joi';
 import Freeswitch from './Freeswitch';
 import MySqlWrapper from './MySqlWrapper';
 import Util from './Utilities';
+import { execSync } from 'child_process';
+import npmScp from 'scp2';
+import future from 'fibers/future';
 import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
 
 export default class Server {
@@ -181,9 +184,9 @@ export default class Server {
                 break;
             // requires access code
             case ENDPOINT.APP:
-			case ENDPOINT.VOICE:
-			case ENDPOINT.PUSH:
-			case ENDPOINT.FAX:
+            case ENDPOINT.VOICE:
+            case ENDPOINT.PUSH:
+            case ENDPOINT.FAX:
             case ENDPOINT.NUMBER:
             case ENDPOINT.SOCIAL:
                 if (!retval.body.accessCode) {
@@ -232,8 +235,8 @@ export default class Server {
                             server_key: Joi.string(true),
                             title: Joi.string(true),
                             body: Joi.string(true),
-                            icon: Joi.string(false,"uri"),
-                            action: Joi.string(false,"uri"),
+                            icon: Joi.string(false, "uri"),
+                            action: Joi.string(false, "uri"),
                         }
                         break;
                 }
@@ -639,6 +642,45 @@ export default class Server {
         Util.affixResponse(response, 200, {
             'Content-Type': 'application/json',
         }, JSON.stringify(retval));
+    }
+    pdfToTiff(src, dest) {
+        if (typeof src == 'string') src = [src];
+        const command = 'gs -q -r204x196 -g1728x2156 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=' + dest + ' ' + src.join(' ');
+        if (typeof execSync === 'function') execSync(command);
+        if (fs.existsSync(dest)) return {
+            success: true,
+            data: 'Conversion successful'
+        }
+
+        return {
+            success: false,
+            data: 'TIFF file not found'
+        };
+    }
+
+    scp(file, newName, path = '/tmp', isDownload) {
+        const fut = new future();
+        let fileName = file.split('/').pop();
+        if (newName) fileName = newName + '.' + file.split('.').pop();
+
+        let params = {
+            host: Meteor.settings.scp.host,
+            username: Meteor.settings.scp.user,
+            password: Meteor.settings.scp.pass
+        };
+        if (isDownload) {
+            params.path = file;
+            npmScp.scp(params, path, function (err) {
+                fut.return(err);
+            });
+        } else {
+            params.path = `${path}/${fileName}`;
+            npmScp.scp(file, params, function (err) {
+                fut.return(err);
+            });
+        }
+        if (fut.wait()) return false;
+        return fileName;
     }
 }
 showNotice = Util.showNotice;
