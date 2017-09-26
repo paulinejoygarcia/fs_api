@@ -1,5 +1,6 @@
 import API from './API';
 import Joi from './Joi';
+import Freeswitch from './Freeswitch';
 import MySqlWrapper from './MySqlWrapper';
 import Util from './Utilities';
 import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
@@ -26,6 +27,19 @@ export default class Server {
             Meteor.settings.astpp.db.port);
         if (conn.connection) {
             this.dbConnection = conn;
+        }
+    }
+
+    connectFreeswitch() {
+        if (!Meteor.settings.freeswitch || !Meteor.settings.freeswitch.ip) {
+            showError("No FreeSWITCH configuration found!");
+            return;
+        }
+
+        let fs = new Freeswitch(Meteor.settings.freeswitch.ip, Meteor.settings.freeswitch.port, Meteor.settings.freeswitch.password);
+        if (fs.isConnected()) {
+            fs.setAstppDB(this.dbConnection);
+            this.freeswitch = fs;
         }
     }
 
@@ -167,6 +181,8 @@ export default class Server {
                 break;
             // requires access code
             case ENDPOINT.APP:
+			case ENDPOINT.VOICE:
+			case ENDPOINT.PUSH:
 			case ENDPOINT.FAX:
             case ENDPOINT.NUMBER:
             case ENDPOINT.SOCIAL:
@@ -208,49 +224,31 @@ export default class Server {
                         break;
                 }
                 break;
-            case ENDPOINT.MESSAGE:
+            case ENDPOINT.PUSH:
                 switch (method) {
-                    case METHOD.GET:
-                        if (!params.sub || !params.sub.trim()) {
-                            retval.code = 404;
-                            retval.error = 'Missing `id` access denied!';
-                            retval.success = false;
-                            return retval;
-                        }
-						break;
-					case METHOD.POST:
-					 joiSchema = {
-                            to: Joi.number(true),
-                            from: Joi.number(true),
+                    case METHOD.POST:
+                        joiSchema = {
+                            registration_id: Joi.string(true),
+                            server_key: Joi.string(true),
+                            title: Joi.string(true),
                             body: Joi.string(true),
-                            attachment: Joi.object(true)
-                        };
-						break;
-				}
+                            icon: Joi.string(false,"uri"),
+                            action: Joi.string(false,"uri"),
+                        }
+                        break;
+                }
+
             case ENDPOINT.FAX:
                 switch (method) {
                     case METHOD.POST:
                         joiSchema = {
                             to: Joi.number(true),
                             from: Joi.number(true),
-                            body: Joi.string(true),
-                            attachment: Joi.object(),
                             files: Joi.array(Joi.file('files', false), 1)
                         };
                         break;
                 }
                 break;
-            case ENDPOINT.VIDEO:
-                switch (method) {
-                    case METHOD.POST:
-                        joiSchema = {
-                            to: Joi.number(true),
-                            from: Joi.number(true),
-                            body: Joi.string(true),
-                            attachment: Joi.object(true)
-                        };
-                        break;
-				    }
             case ENDPOINT.NUMBER:
                 if (params.sub == ENDPOINT_ACTION.NUMBER_INCOMING) {
                     joiSchema = {
@@ -596,6 +594,51 @@ export default class Server {
 
     static newFuture() {
         return new Meteor.GV.FUTURE();
+    }
+
+    processFreeswitchRequest(params, request, response, next) {
+        let sections = ['dialplan', 'fax_callback'];
+        let section = params.section;
+        let ipAddress = request.connection.remoteAddress;
+        if (ipAddress != Meteor.settings.freeswitch.ip && ipAddress != '127.0.0.1') {
+            Util.affixResponse(response, 401, {
+                'Content-Type': 'application/json',
+            }, JSON.stringify({ success: false, error: 'Unauthorized access' }));
+            return;
+        }
+
+        if (request.method !== METHOD.POST) {
+            Util.affixResponse(response, 405, {
+                'Allow': 'POST',
+                'Content-Type': 'application/json',
+            }, JSON.stringify({ success: false, error: 'Method not allowed!' }));
+        }
+
+        if (sections.indexOf(section) === -1) {
+            Util.affixResponse(response, 404, {
+                'Content-Type': 'application/json',
+            }, JSON.stringify({ success: false, error: `Endpoint not found: ${section}` }));
+        }
+
+        let body = response.body;
+        let retval = {
+            success: true,
+            code: 200,
+            data: null
+        };
+
+        switch (section) {
+            case 'diaplan':
+                retval = this.freeswitch.dialplan(body);
+                break;
+            case 'fax_callback':
+                retval = this.freeswitch.faxCallback(body);
+                break;
+        }
+
+        Util.affixResponse(response, 200, {
+            'Content-Type': 'application/json',
+        }, JSON.stringify(retval));
     }
 }
 showNotice = Util.showNotice;
