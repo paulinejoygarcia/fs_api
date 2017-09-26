@@ -88,11 +88,12 @@ class Menu extends Component {
                 <div className="site-user">
                     <div className="media align-items-center">
                         <a href="javascript:void(0)">
-                            <img className="avatar avatar-circle" src="/img/person.PNG" alt="avatar" />
+                            {/*<img className="avatar avatar-circle" src="/img/person.PNG" alt="avatar" />*/}
+                            <img className="avatar avatar-circle" src={(this.props.user && this.props.user.profile.avatar)?"/img/"+this.props.user.profile.avatar:"/img/default.png"} alt="avatar" />
                         </a>
                         <div className="media-body hidden-fold">
                             <h6 className="mborder-a-0">
-                                <a href="javascript:void(0)" className="username">John Pau Pat</a>
+                                <a href="javascript:void(0)" className="username">{this.props.user?this.props.user.profile.first + " " + this.props.user.profile.last:""}</a>
                             </h6>
                         </div>
                     </div>
@@ -101,6 +102,16 @@ class Menu extends Component {
                     <div className="site-menubar-inner">
                         <ul className="site-menu">
                             {this.renderMenuList()}
+                            <li>
+                                <a href="#" onClick={() => {
+                                    Meteor.logout((err,data)=>{
+                                        console.log("err",err,data);
+                                    });
+                                }}>
+                                    <i className="menu-icon zmdi zmdi-hc-lg zmdi-lock-outline" />
+                                    <span className="menu-text">Logout</span>
+                                </a>
+                            </li>
                         </ul>
                     </div>
                 </div>
@@ -115,5 +126,6 @@ Menu.propTypes = {
 
 export default createContainer(() => {
     return {
+        user: Meteor.user()
     };
 }, Menu);

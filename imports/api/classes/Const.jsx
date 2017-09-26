@@ -102,4 +102,11 @@ export const ENDPOINT_CHECKPOINT = {
     [ENDPOINT.VOICE]: {
         [ENDPOINT_ACTION.VOICE_CALL]: [METHOD.GET]
     }
-}
+};
+
+export const GRITTER_STATUS = {
+    WARNING: 'with-icon exclamation-circle warning',
+    ERROR: 'with-icon times-circle danger',
+    NOTICE: 'with-icon info-circle primary',
+    SUCCESS: 'with-icon check-circle success'
+};

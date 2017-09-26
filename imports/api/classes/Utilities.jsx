@@ -1,5 +1,6 @@
 import { http, https } from 'follow-redirects';
 import { Meteor } from 'meteor/meteor';
+import { GRITTER_STATUS } from './Const';
 import './PhoneNumberParser';
 import moment from 'moment';
 import mime from 'mime-types';
@@ -385,6 +386,17 @@ class Utilities {
         }
         if (fut.wait()) return false;
         return fileName;
+    }
+}
+export function showGritter(title, text, status) {
+    if (Meteor.isClient) {
+        $.gritter.add({
+            title: title,
+            text: text,
+            class_name: status,
+            time: 10000,
+        });
+        return;
     }
 }
 export default Util = new Utilities();
