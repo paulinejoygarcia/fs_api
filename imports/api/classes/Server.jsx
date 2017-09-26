@@ -217,6 +217,16 @@ export default class Server {
                             retval.success = false;
                             return retval;
                         }
+						break;
+					case METHOD.POST:
+					 joiSchema = {
+                            to: Joi.number(true),
+                            from: Joi.number(true),
+                            body: Joi.string(true),
+                            attachment: Joi.object(true)
+                        };
+						break;
+				}
             case ENDPOINT.FAX:
                 switch (method) {
                     case METHOD.POST:
@@ -240,6 +250,7 @@ export default class Server {
                             attachment: Joi.object(true)
                         };
                         break;
+				    }
             case ENDPOINT.NUMBER:
                 if (params.sub == ENDPOINT_ACTION.NUMBER_INCOMING) {
                     joiSchema = {

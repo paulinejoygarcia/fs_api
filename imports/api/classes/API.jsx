@@ -1,7 +1,8 @@
+
 import { ENDPOINT, ENDPOINT_ACTION, METHOD, MAX_API_LIFETIME } from './Const';
 import { Enc } from './Encryption';
 import Util from './Utilities';
-import Facebook from './Facebook';
+
 import Linkedin from './Linkedin';
 import Pinterest from './Pinterest';
 import Twitter from './Twitter';
@@ -13,7 +14,7 @@ import SocialPostManager, { SocialPostDB } from './SocialPostManager';
 import moment from 'moment';
 import MessageCtrl from './controller/Message';
 import ScreenshotsCtrl from './controller/Screenshot';
-
+import {PushNotifDB} from '../pushNotifications';
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
         this.api = api;
@@ -98,7 +99,6 @@ export default class API {
         }
         return false;
     }
-
     getAccountBalance() {
         let balance = 0;
         if (this.accountData)
@@ -135,6 +135,7 @@ export default class API {
     }
 
     doProcess(method, body, smtpSend, smppSend, processRequestUrl) {
+        delete body.accessCode;
         switch (this.endpoint) {
             case ENDPOINT.AUTH: {
                 let query = "SELECT `api`, `secret` FROM `accounts` WHERE `account_id`=?";
@@ -241,6 +242,89 @@ export default class API {
                             return { success: false, code: 500, data: 'Something went wrong!' }
                         }
                     }
+                }
+			case ENDPOINT.VOICE:
+                data = [];
+                query = 'SELECT callstart as call_start,' +
+                    'callerid as caller_id,' +
+                    'callednum as called_number,' +
+                    'billseconds as duration,' +
+                    'disposition,' +
+                    'debit as price,' +
+                    'uniqueid as call_id' +
+                    ' FROM cdrs WHERE accountid = ' +
+                    '(SELECT id from accounts WHERE account_id = ?)' +
+                    ' ORDER BY callstart DESC' +
+                    (body.limit?' LIMIT '+body.limit:'');
+                this.databaseConnection.select(query,[this.accountId]).forEach((accInfo)=>{
+                    data.push({
+                        call_start:accInfo.call_start,
+                        caller_id:accInfo.caller_id,
+                        called_number: accInfo.called_number,
+                        duration: accInfo.duration,
+                        disposition: accInfo.disposition,
+                        price: accInfo.price,
+                        call_id: accInfo.call_id
+                    });
+                });
+                return {
+                    success: true,
+                    code: 200,
+                    data: data
+                }
+			case ENDPOINT.PUSH:
+			    data = [];
+			    switch(method) {
+                    case METHOD.GET:
+                        let queryPush = {account_id:this.accountId};
+                        let optionsPush = {sort:{createdTimestamp:-1}};
+                        if(this.subEndpoint)
+                            queryPush._id = new Mongo.ObjectID(this.subEndpoint);
+                        if(body.limit)
+                            optionsPush.limit = parseInt(body.limit);
+                        PushNotifDB.find(queryPush,optionsPush).fetch().forEach((PushNotif)=> {
+                            data.push({
+                                _id:PushNotif._id._str,
+                                registration_id: PushNotif.registration_id,
+                                title: PushNotif.title,
+                                body: PushNotif.body,
+                                server_key: PushNotif.server_key,
+                                icon: PushNotif.icon || null,
+                                action: PushNotif.action || null,
+                                priority: PushNotif.priority || 0,
+                                message_id: PushNotif.message_id || "",
+                                price: PushNotif.price || 0.0,
+                                created_dt: moment(PushNotif.createdTimestamp).format("MMM-DD-YYYY hh:mm:ss A"),
+                                account_id: PushNotif.account_id
+                            });
+                        });
+                        return {
+                            success: true,
+                            code: 200,
+                            data: data
+                        }
+                    case METHOD.POST:
+                        body.account_id = this.accountId;
+                        body.createdTimestamp = moment().valueOf();
+                        if(!this.isAccountBillable(Meteor.settings.pricing.pushNotification))
+                            return {
+                                success:false,
+                                code:400,
+                                error:'Insufficient funds to process request'
+                            };
+                        let chargeResponse = this.chargeAccount(Meteor.settings.pricing.pushNotification);
+                        if(!chargeResponse.success)
+                            return {
+                                success:false,
+                                code:500,
+                                error:chargeResponse.error
+                            };
+                        return {
+                            success: true,
+                            code:200,
+                            data: {chargeResponse,PushNotifId:PushNotifDB.insert(body)._str}
+                        };
+                        break;
                 }
                 break;
 
