@@ -6,7 +6,8 @@ import { Meteor } from 'meteor/meteor';
 import Header from './Header';
 import Section from './Section';
 import Menu from './Menu';
-import '../stylesheets/main.scss';
+import Widget from './widget/Widget';
+import '../stylesheets/widget.css';
 
 class Main extends Component {
     constructor(props) {
@@ -20,6 +21,7 @@ class Main extends Component {
                     <Menu history={this.props.history} />
                     <Section route={this.props.match.params.component} />
                 </div>
+                <Widget />
             </div>
         );
     }
