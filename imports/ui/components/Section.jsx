@@ -5,6 +5,8 @@ import React, { Component } from 'react';
 import { ROUTE_COMPONENT } from '../../api/classes/Const';
 import Dashboard from './dashboard/Dashboard';
 import Info from './accounts/Info';
+import Billing from './billing/Billing';
+import Invoice from './billing/Invoice';
 import { Meteor } from 'meteor/meteor';
 
 class Section extends Component {
@@ -21,6 +23,12 @@ class Section extends Component {
                 content = <Info />;
                 break;
             case ROUTE_COMPONENT.ACCOUNT.PROFILE:
+                break;
+            case ROUTE_COMPONENT.ACCOUNT.BILLING:
+                content = <Billing />;
+                break;
+            case ROUTE_COMPONENT.ACCOUNT.INVOICE:
+                content = <Invoice />;
                 break;
         }
         return (

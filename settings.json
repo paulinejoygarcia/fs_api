@@ -18,9 +18,17 @@
             "port": 3306,
             "user": "root",
             "password": "",
-            "database": "database"
+            "database": "db"
         },
         "private_key":""
+    },
+    "stripe": {
+        "test": {
+            "private": "sk_test..."
+        },
+        "live": {
+            "private": "sk_live..."
+        }
     },
     "freeswitch": {
         "ip": "",
@@ -56,5 +64,4 @@
         "socialPost": 0.003,
         "socialComment": 0.002,
         "fax": 0.04
-    }
-}
+    }}

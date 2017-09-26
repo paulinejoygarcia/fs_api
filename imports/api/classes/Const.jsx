@@ -1,34 +1,13 @@
 export const MAX_API_LIFETIME = 4; // 4 hours
-export const API_BASE = '/api/2017-09-12/accounts/';
 
 export const ROUTE_COMPONENT = {
     DASHBOARD: 'dashboard',
     ACCOUNT: {
         INFO: 'info',
-        PROFILE: 'profile'
+        PROFILE: 'profile',
+        BILLING: 'billing',
+        INVOICE: 'invoices',
     }
-};
-
-export const ROUTE_API_DOC = {
-    APPLICATION: 'application',
-    FAX: 'fax',
-    MESSAGE: {
-        SMS: 'message-sms',
-        MMS: 'message-mms'
-    },
-    NUMBER: 'number',
-    PUSH: 'push-notification',
-    SOCIAL: {
-        ACCOUNT: 'social-account',
-        COMMENT: 'social-comment',
-        POST: 'social-post',
-    },
-    VIDEO: {
-        CALL: 'video-call',
-        SCREENSHOT: 'video-screenshot'
-    },
-    VOICE: 'voice-call',
-    EXPLORER: 'explorer',
 };
 
 export const METHOD = {
@@ -91,6 +70,7 @@ export const ENDPOINT_CHECKPOINT = {
         [ENDPOINT_ACTION.SOCIAL_COMMENT]: [METHOD.POST],
         [ENDPOINT_ACTION.SOCIAL_POST]: [METHOD.POST]
     },
+
     [ENDPOINT.VIDEO]: {
         [ENDPOINT_ACTION.VIDEO_SCREENSHOT]: [METHOD.GET, METHOD.POST]
     },

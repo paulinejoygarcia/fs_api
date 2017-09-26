@@ -26,6 +26,11 @@ class Utilities {
     random(max, min) {
         return Math.floor(Math.random() * max) + min;
     }
+    addDaysToDate(interval){
+        startdate = moment().format('MMMM Do YYYY, h:mm:ss a');
+        let new_date = moment(startdate, 'MMMM Do YYYY, h:mm:ss a').add(interval, 'days');
+        return new_date.format('YYYY-MM-DD HH:mm:ss');
+    }
     genRandomString(length, option) {
         let that = this;
         let retval = '';
