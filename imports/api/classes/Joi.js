@@ -53,6 +53,14 @@ class Joi {
         return type;
     }
 
+    object(isRequired = false) {
+        let type = npmJoi.object();
+
+        if (isRequired)
+            type = type.required();
+
+        return type;
+    }
     file(label = 'file', defaultNull = true) {
         let file = npmJoi.object().keys({
             filename: npmJoi.string().required().options({ language: { any: { required: 'should have a filename' } } }).label(label),

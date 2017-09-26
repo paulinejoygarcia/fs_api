@@ -15,6 +15,7 @@ export default class FaxManager {
             price: parseFloat(price) || 0,
             result: null,
             uuid: '',
+            faxId: '',
             totalPages: 0,
             transferredPages: 0,
             tiff: '',
@@ -31,6 +32,9 @@ export default class FaxManager {
     setResult(result) {
         this.json.result = result;
     }
+    setFaxId(id) {
+        this.json.faxId = id;
+    }
     setUUID(id) {
         this.json.uuid = id;
     }
@@ -42,6 +46,10 @@ export default class FaxManager {
     }
     setTIFF(tiff) {
         this.json.tiff = tiff;
+    }
+    setPrice(price) {
+        if(parseFloat(price))
+            this.json.price = parseFloat(price);
     }
     setStatus(status) {
         if (parseInt(status))
@@ -56,6 +64,7 @@ export default class FaxManager {
             files: this.json.files,
             price: this.json.price,
             uuid: this.json.uuid,
+            faxId: this.json.faxId,
             totalPages: this.json.totalPages,
             transferredPages: this.json.transferredPages,
             createdDt: moment(this.json.createdDt).format('YYYY-MM-DD HH:mm:ss')

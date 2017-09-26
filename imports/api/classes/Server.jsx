@@ -1,5 +1,6 @@
 import API from './API';
 import Joi from './Joi';
+import Freeswitch from './Freeswitch';
 import MySqlWrapper from './MySqlWrapper';
 import Util from './Utilities';
 import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
@@ -8,6 +9,7 @@ export default class Server {
     constructor() {
         this.dbConnection = null;
     }
+
     /**
      * Connect to MySQL Server
      */
@@ -27,12 +29,26 @@ export default class Server {
             this.dbConnection = conn;
         }
     }
+
+    connectFreeswitch() {
+        if (!Meteor.settings.freeswitch || !Meteor.settings.freeswitch.ip) {
+            showError("No FreeSWITCH configuration found!");
+            return;
+        }
+
+        let fs = new Freeswitch(Meteor.settings.freeswitch.ip, Meteor.settings.freeswitch.port, Meteor.settings.freeswitch.password);
+        if (fs.isConnected()) {
+            fs.setAstppDB(this.dbConnection);
+            this.freeswitch = fs;
+        }
+    }
+
     /**
      * Process request received
-     * @param {*} params 
-     * @param {*} request 
-     * @param {*} response 
-     * @param {*} next 
+     * @param {*} params
+     * @param {*} request
+     * @param {*} response
+     * @param {*} next
      */
     processRequest(params, request, response, next) {
         let header = {};
@@ -64,7 +80,7 @@ export default class Server {
 
                 api.setEndpoint(endpoint, subEndpoint, extEndpoint);
 
-                result = api.doProcess(request.method, data.body);
+                result = api.doProcess(request.method, data.body, this.smtpSend, this.smppSend, this.processRequestUrl);
                 data = { ...data, ...result };
                 retval = { ...retval, ...result };
             }
@@ -165,6 +181,8 @@ export default class Server {
                 break;
             // requires access code
             case ENDPOINT.APP:
+			case ENDPOINT.VOICE:
+			case ENDPOINT.PUSH:
 			case ENDPOINT.FAX:
             case ENDPOINT.NUMBER:
             case ENDPOINT.SOCIAL:
@@ -206,6 +224,20 @@ export default class Server {
                         break;
                 }
                 break;
+            case ENDPOINT.PUSH:
+                switch (method) {
+                    case METHOD.POST:
+                        joiSchema = {
+                            registration_id: Joi.string(true),
+                            server_key: Joi.string(true),
+                            title: Joi.string(true),
+                            body: Joi.string(true),
+                            icon: Joi.string(false,"uri"),
+                            action: Joi.string(false,"uri"),
+                        }
+                        break;
+                }
+
             case ENDPOINT.FAX:
                 switch (method) {
                     case METHOD.POST:
@@ -377,6 +409,236 @@ export default class Server {
         }
 
         return retval;
+    }
+
+    smppSend(from, to, message) {
+        if (this._smpp) {
+            return this._smpp.submitSm(from, to, message);
+        }
+        return {
+            success: false,
+            data: 'SMPP server down'
+        }
+    }
+
+    smppReceive(from, to, message) {
+        const that = this;
+        const account = that._astpp.accountDidOwner(to);
+        if (!account.success) return;
+
+        let price = Meteor.GV.PRICING.sms.in;
+        price = Message.getParts(message) * price;
+        const billable = that._astpp.checkBalance(price, account.data.account_id);
+        if (!billable.success) return billable;
+
+        const v = {
+            from: from,
+            to: to,
+            body: message,
+            direction: 'inbound',
+            message_id: Meteor.UTILS.md5Hash(from + to + message),
+            price: price,
+            account_id: account.data.account_id
+        };
+        let record = new Message(v);
+        record.insert();
+
+        const app = that._astpp.didApp(to);
+
+        if (!app.success) return;
+
+        if (app.data.msg_url || app.data.msg_fb_url) {
+            that._astpp.accountCharge(price, account.data.account_id);
+            const xml = Server.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
+        }
+    }
+
+    smtpSend(from, to, originator, att, body, host = 'localhost', port = 25) {
+        const fut = Server.newFuture();
+        const client = Smtp.createClient(host, port);
+
+        client.once('idle', function () {
+            client.useEnvelope({
+                from: from,
+                to: [to]
+            });
+        });
+
+        client.on('message', function () {
+            const eml = MM4.constructMms(`<${from}>`, `<${to}>`, `<${originator}>`, att, body);
+            const cws = Meteor.GV.FS.createWriteStream(`${Meteor.GV.UPLOAD_PATH}Message-snd-${Date.now()}.eml`);
+            cws.once('open', (fd) => {
+                cws.write(eml);
+                cws.end();
+            });
+
+            const bufferStream = new stream.PassThrough();
+            bufferStream.end(new Buffer(eml));
+            bufferStream.pipe(client);
+        });
+
+        client.on('ready', function (success, response) {
+            if (success) {
+                console.log('The message was transmitted successfully', response);
+                client.quit();
+                const id = response.substring(response.lastIndexOf("<") + 1, response.lastIndexOf(">"));
+                fut.return({
+                    success: true,
+                    data: id
+                });
+            } else {
+                fut.return({
+                    success: false,
+                    data: `MMS not sent: ${response}`
+                });
+            }
+        });
+
+        client.on('error', function (err, stage) {
+            client.quit();
+            fut.return({
+                success: false,
+                data: `MMS not sent`
+            });
+        });
+
+        return fut.wait();
+    }
+
+    smtpReceive(file) {
+        const that = this;
+        const p = MM4.parseMms(file);
+        const msgId = p.messageId;
+        const body = p.body;
+        const attachment = p.attachment;
+        delete p.body;
+        delete p.attachment;
+        if (MM4.isResponse(p.messageType) && (rec = Message.getByInternalId(p.internalMessageId))) {
+            rec.result = p;
+            rec.message_id = msgId;
+            rec.update();
+        } else if (MM4.isRequest(p.messageType) && attachment) {
+            const from = MM4.getNumber(p.from);
+            const to = MM4.getNumber(p.to);
+            const account = that._astpp.accountDidOwner(to);
+            if (!account.success) return;
+
+            const price = Meteor.GV.PRICING.mms.in;
+            const billable = that._astpp.checkBalance(price, account.data.account_id);
+            if (!billable.success) return billable;
+
+            const v = {
+                direction: 'inbound',
+                from: from,
+                to: to,
+                body: body,
+                attachment: attachment,
+                message_id: msgId,
+                result: p,
+                account_id: account.data.account_id,
+                price: price
+            };
+            let record = new Message(v);
+            record.insert();
+
+            const app = that._astpp.didApp(to);
+            if (!app.success) return;
+
+            if (app.data.msg_url || app.data.msg_fb_url) {
+                delete v.result;
+                that._astpp.accountCharge(price, account.data.account_id);
+                const xml = Server.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
+            }
+        }
+    }
+
+    static processRequestUrl(params, url, method = 'get', fallback, fb_method = 'get', accountId = null) {
+        let xml = {};
+        if (url && method) {
+            xml = Server.httpRequest(url, method, params);
+            if (xml.statusCode != 200 && fallback && fb_method)
+                xml = Server.httpRequest(fallback, fb_method, params);
+        }
+
+        if (x = xml.data) {
+            let xp = new XmlParser(x, accountId);
+            const parsed = xp.process();
+            if (parsed.success) return parsed.data;
+        }
+    }
+
+    static httpRequest(url, method, params, data, headers) {
+        if (method.toLowerCase() != 'get' && method.toLowerCase() != 'post') {
+            return {
+                statusCode: 400,
+                body: 'Bad Request'
+            };
+        }
+        try {
+            let opts = {};
+            if (h = headers) opts.headers = h;
+            if (p = params) opts.params = p;
+            if (d = data) opts.data = d;
+            let result = HTTP.call(method.toUpperCase(), url, opts);
+            return {
+                statusCode: 200,
+                data: result.content
+            };
+        } catch (e) {
+            return {
+                statusCode: (e.response) ? e.response.statusCode : 400,
+                data: (e.response) ? e.response.data : 'Cannot make HTTP request'
+            };
+        }
+    }
+
+    static newFuture() {
+        return new Meteor.GV.FUTURE();
+    }
+
+    processFreeswitchRequest(params, request, response, next) {
+        let sections = ['dialplan', 'fax_callback'];
+        let section = params.section;
+        let ipAddress = request.connection.remoteAddress;
+        if (ipAddress != Meteor.settings.freeswitch.ip && ipAddress != '127.0.0.1') {
+            Util.affixResponse(response, 401, {
+                'Content-Type': 'application/json',
+            }, JSON.stringify({ success: false, error: 'Unauthorized access' }));
+            return;
+        }
+
+        if (request.method !== METHOD.POST) {
+            Util.affixResponse(response, 405, {
+                'Allow': 'POST',
+                'Content-Type': 'application/json',
+            }, JSON.stringify({ success: false, error: 'Method not allowed!' }));
+        }
+
+        if (sections.indexOf(section) === -1) {
+            Util.affixResponse(response, 404, {
+                'Content-Type': 'application/json',
+            }, JSON.stringify({ success: false, error: `Endpoint not found: ${section}` }));
+        }
+
+        let body = response.body;
+        let retval = {
+            success: true,
+            code: 200,
+            data: null
+        };
+
+        switch (section) {
+            case 'diaplan':
+                retval = this.freeswitch.dialplan(body);
+                break;
+            case 'fax_callback':
+                retval = this.freeswitch.faxCallback(body);
+                break;
+        }
+
+        Util.affixResponse(response, 200, {
+            'Content-Type': 'application/json',
+        }, JSON.stringify(retval));
     }
 }
 showNotice = Util.showNotice;

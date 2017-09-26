@@ -1,3 +1,4 @@
+
 import { ENDPOINT, ENDPOINT_ACTION, METHOD, MAX_API_LIFETIME } from './Const';
 import { Enc } from './Encryption';
 import Util from './Utilities';
@@ -11,7 +12,9 @@ import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
 import SocialCommentManager, { SocialCommentDB } from './SocialCommentManager';
 import SocialPostManager, { SocialPostDB } from './SocialPostManager';
 import moment from 'moment';
-
+import MessageCtrl from './controller/Message';
+import ScreenshotsCtrl from './controller/Screenshot';
+import {PushNotifDB} from '../pushNotifications';
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
         this.api = api;
@@ -69,7 +72,10 @@ export default class API {
         if (wrapper && wrapper.isConnected())
             this.databaseConnection = wrapper;
     }
-
+    setFSConnection(freeswitch) {
+        if (freeswitch && freeswitch.isConnected())
+            this.freeswitchConnection = freeswitch;
+    }
     setEndpoint(endpoint, sub, ext) {
         this.endpoint = endpoint;
         this.subEndpoint = sub;
@@ -96,8 +102,42 @@ export default class API {
         }
         return false;
     }
+    getAccountBalance() {
+        let balance = 0;
+        if (this.accountData)
+            balance = parseFloat(this.accountData.balance) + parseFloat(this.accountData.posttoexternal) * parseFloat(this.accountData.credit_limit);
+        return balance;
+    }
 
-    doProcess(method, body) {
+    isAccountBillable(price) {
+        return (this.getAccountBalance() >= parseFloat(price));
+    }
+
+    updateAccountBalance(amount, paymentType = 'debit') {
+        if (this.accountData && parseFloat(amount)) {
+            let balance = parseFloat(this.accountData.balance) - parseFloat(amount);
+            if (paymentType == 'credit')
+                balance = parseFloat(this.accountData.balance) + parseFloat(amount);
+            return this.databaseConnection.update('accounts', { balance }, `id=${this.accountData.id}`);
+        }
+    }
+
+    didAccountOwner(number) {
+        let query = 'SELECT dids.accountid as aid, accounts.number as anum FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? ';
+        let result = this.databaseConnection.selectOne(query, [number]);
+        if (result) {
+            return {
+                success: true,
+                data: {
+                    id: result.aid,
+                    accountId: result.anum,
+                }
+            }
+        }
+        return result;
+    }
+
+    doProcess(method, body, smtpSend, smppSend, processRequestUrl) {
         delete body.accessCode;
         switch (this.endpoint) {
             case ENDPOINT.AUTH: {
@@ -206,6 +246,94 @@ export default class API {
                         }
                     }
                 }
+				return {
+                    success: true,
+                    code: 200,
+                    data
+                };
+			case ENDPOINT.VOICE:
+                data = [];
+                query = 'SELECT callstart as call_start,' +
+                    'callerid as caller_id,' +
+                    'callednum as called_number,' +
+                    'billseconds as duration,' +
+                    'disposition,' +
+                    'debit as price,' +
+                    'uniqueid as call_id' +
+                    ' FROM cdrs WHERE accountid = ' +
+                    '(SELECT id from accounts WHERE account_id = ?)' +
+                    ' ORDER BY callstart DESC' +
+                    (body.limit?' LIMIT '+body.limit:'');
+                this.databaseConnection.select(query,[this.accountId]).forEach((accInfo)=>{
+                    data.push({
+                        call_start:accInfo.call_start,
+                        caller_id:accInfo.caller_id,
+                        called_number: accInfo.called_number,
+                        duration: accInfo.duration,
+                        disposition: accInfo.disposition,
+                        price: accInfo.price,
+                        call_id: accInfo.call_id
+                    });
+                });
+                return {
+                    success: true,
+                    code: 200,
+                    data: data
+                }
+			case ENDPOINT.PUSH:
+			    data = [];
+			    switch(method) {
+                    case METHOD.GET:
+                        let queryPush = {account_id:this.accountId};
+                        let optionsPush = {sort:{createdTimestamp:-1}};
+                        if(this.subEndpoint)
+                            queryPush._id = new Mongo.ObjectID(this.subEndpoint);
+                        if(body.limit)
+                            optionsPush.limit = parseInt(body.limit);
+                        PushNotifDB.find(queryPush,optionsPush).fetch().forEach((PushNotif)=> {
+                            data.push({
+                                _id:PushNotif._id._str,
+                                registration_id: PushNotif.registration_id,
+                                title: PushNotif.title,
+                                body: PushNotif.body,
+                                server_key: PushNotif.server_key,
+                                icon: PushNotif.icon || null,
+                                action: PushNotif.action || null,
+                                priority: PushNotif.priority || 0,
+                                message_id: PushNotif.message_id || "",
+                                price: PushNotif.price || 0.0,
+                                created_dt: moment(PushNotif.createdTimestamp).format("MMM-DD-YYYY hh:mm:ss A"),
+                                account_id: PushNotif.account_id
+                            });
+                        });
+                        return {
+                            success: true,
+                            code: 200,
+                            data: data
+                        }
+                    case METHOD.POST:
+                        body.account_id = this.accountId;
+                        body.createdTimestamp = moment().valueOf();
+                        if(!this.isAccountBillable(Meteor.settings.pricing.pushNotification))
+                            return {
+                                success:false,
+                                code:400,
+                                error:'Insufficient funds to process request'
+                            };
+                        let chargeResponse = this.chargeAccount(Meteor.settings.pricing.pushNotification);
+                        if(!chargeResponse.success)
+                            return {
+                                success:false,
+                                code:500,
+                                error:chargeResponse.error
+                            };
+                        return {
+                            success: true,
+                            code:200,
+                            data: {chargeResponse,PushNotifId:PushNotifDB.insert(body)._str}
+                        };
+                        break;
+                }
                 break;
 
             case ENDPOINT.FAX:
@@ -236,10 +364,67 @@ export default class API {
                     case ENDPOINT_ACTION.SOCIAL_POST:
                         return this.socialPost(this.extEndpoint, body);
                 }
+                break;
+
+            case ENDPOINT.MESSAGE:
+            case ENDPOINT.PUSH:
+            case ENDPOINT.VIDEO:
+            case ENDPOINT.VOICE:
                 return {
                     success: true,
                     code: 200,
-                    data: 'social endpoint'
+                    data: 'success'
+                };
+
+            case ENDPOINT.MESSAGE:
+                switch (method) {
+                    case METHOD.POST:
+                        try {
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            let res = ctrl.insert();
+                            if (res.success) res = ctrl.send();
+                            return res;
+                        } catch (err) {
+                            console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
+                        }
+                        break;
+                    case METHOD.GET:
+                        try {
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            return {
+                                success: true,
+                                code: 200,
+                                data: ctrl.list()
+                            };
+                        } catch (err) {
+                            console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
+                        }
+                        break;
+                    default:
+                        return {
+                            success: false,
+                            code: 404,
+                            data: {}
+                        };
+                }
+                break;
+            case ENDPOINT.VIDEO:
+                switch (method) {
+                    case METHOD.POST:
+                        switch (this.subEndpoint) {
+                            case ENDPOINT_ACTION.VIDEO_SCREENSHOT:
+                                const ctrl = new ScreenshotsCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                                let res = ctrl.insert();
+                                if (res.success) res = ctrl.send();
+                                return res;
+                        }
+                        break;
+                    default:
+                        return {
+                            success: false,
+                            code: 404,
+                            data: {}
+                        };
                 }
                 break;
         }
@@ -278,6 +463,14 @@ export default class API {
     }
 
     faxSender(to, from, files) {
+        if (!this.freeswitchConnection) {
+            return {
+                success: false,
+                code: 400,
+                error: 'Fax send temporarily unavailable. Please try again later.'
+            };
+        }
+
         let price = Meteor.settings.pricing.fax || 0.04;
         if (!this.isAccountBillable(price)) {
             return {
@@ -290,7 +483,32 @@ export default class API {
         let fax = new FaxManager(this.accountId, to, from, 'outbound', [], price);
         fax.flush();
 
-        //TODO: send fax and charge account
+        let pdfs = [];
+        if (files.length > 1) {
+            files.forEach(function (f) {
+                pdfs.push(PATH.UPLOAD + f.filename);
+            });
+        } else pdfs = [PATH.UPLOAD + files[0].filename];
+
+        const fid = Util.md5Hash(from + to + Date.now());
+        const destName = 'FAX-snd-' + fid + '.tiff';
+        const dest = PATH.UPLOAD + 'tiff/' + destName;
+        const convert = Util.pdfToTiff(pdfs, dest);
+        if (convert.success) {
+            const copied = Util.scp(dest);
+            if (copied) {
+                fax.setFaxId(fid);
+                fax.setTIFF(copied);
+                fax.flush();
+                return this.freeswitchConnection.sendFax(record.from, record.to, fid, copied, this.accountData.number);
+            }
+            return {
+                success: false,
+                data: 'Could not generate TIFF file'
+            };
+        }
+
+        this.freeswitchConnection.sendFax();
 
         return {
             success: true,
