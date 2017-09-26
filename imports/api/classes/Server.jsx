@@ -1,5 +1,6 @@
 import API from './API';
 import Joi from './Joi';
+import Freeswitch from './Freeswitch';
 import MySqlWrapper from './MySqlWrapper';
 import Util from './Utilities';
 import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
@@ -27,6 +28,20 @@ export default class Server {
             this.dbConnection = conn;
         }
     }
+
+    connectFreeswitch() {
+        if (!Meteor.settings.freeswitch || !Meteor.settings.freeswitch.ip) {
+            showError("No FreeSWITCH configuration found!");
+            return;
+        }
+
+        let fs = new Freeswitch(Meteor.settings.freeswitch.ip, Meteor.settings.freeswitch.port, Meteor.settings.freeswitch.password);
+        if (fs.isConnected()) {
+            fs.setAstppDB(this.dbConnection);
+            this.freeswitch = fs;
+        }
+    }
+
     /**
      * Process request received
      * @param {*} params 
@@ -165,7 +180,7 @@ export default class Server {
                 break;
             // requires access code
             case ENDPOINT.APP:
-			case ENDPOINT.FAX:
+            case ENDPOINT.FAX:
             case ENDPOINT.NUMBER:
             case ENDPOINT.SOCIAL:
                 if (!retval.body.accessCode) {
@@ -377,6 +392,51 @@ export default class Server {
         }
 
         return retval;
+    }
+
+    processFreeswitchRequest(params, request, response, next) {
+        let sections = ['dialplan', 'fax_callback'];
+        let section = params.section;
+        let ipAddress = request.connection.remoteAddress;
+        if (ipAddress != Meteor.settings.freeswitch.ip && ipAddress != '127.0.0.1') {
+            Util.affixResponse(response, 401, {
+                'Content-Type': 'application/json',
+            }, JSON.stringify({ success: false, error: 'Unauthorized access' }));
+            return;
+        }
+
+        if (request.method !== METHOD.POST) {
+            Util.affixResponse(response, 405, {
+                'Allow': 'POST',
+                'Content-Type': 'application/json',
+            }, JSON.stringify({ success: false, error: 'Method not allowed!' }));
+        }
+
+        if (sections.indexOf(section) === -1) {
+            Util.affixResponse(response, 404, {
+                'Content-Type': 'application/json',
+            }, JSON.stringify({ success: false, error: `Endpoint not found: ${section}` }));
+        }
+
+        let body = response.body;
+        let retval = {
+            success: true,
+            code: 200,
+            data: null
+        };
+
+        switch (section) {
+            case 'diaplan':
+                retval = this.freeswitch.dialplan(body);
+                break;
+            case 'fax_callback':
+                retval = this.freeswitch.faxCallback(body);
+                break;
+        }
+
+        Util.affixResponse(response, 200, {
+            'Content-Type': 'application/json',
+        }, JSON.stringify(retval));
     }
 }
 showNotice = Util.showNotice;

@@ -69,7 +69,10 @@ export default class API {
         if (wrapper && wrapper.isConnected())
             this.databaseConnection = wrapper;
     }
-
+    setFSConnection(freeswitch) {
+        if (freeswitch && freeswitch.isConnected())
+            this.freeswitchConnection = freeswitch;
+    }
     setEndpoint(endpoint, sub, ext) {
         this.endpoint = endpoint;
         this.subEndpoint = sub;
@@ -206,7 +209,11 @@ export default class API {
                         }
                     }
                 }
-                break;
+                return {
+                    success: true,
+                    code: 200,
+                    data
+                };
 
             case ENDPOINT.FAX:
                 switch (method) {
@@ -236,12 +243,17 @@ export default class API {
                     case ENDPOINT_ACTION.SOCIAL_POST:
                         return this.socialPost(this.extEndpoint, body);
                 }
+                break;
+
+            case ENDPOINT.MESSAGE:
+            case ENDPOINT.PUSH:
+            case ENDPOINT.VIDEO:
+            case ENDPOINT.VOICE:
                 return {
                     success: true,
                     code: 200,
-                    data: 'social endpoint'
-                }
-                break;
+                    data: 'success'
+                };
         }
         return { success: false, code: 404, error: 'Invalid request!' };
     }
@@ -278,6 +290,14 @@ export default class API {
     }
 
     faxSender(to, from, files) {
+        if (!this.freeswitchConnection) {
+            return {
+                success: false,
+                code: 400,
+                error: 'Fax send temporarily unavailable. Please try again later.'
+            };
+        }
+
         let price = Meteor.settings.pricing.fax || 0.04;
         if (!this.isAccountBillable(price)) {
             return {
@@ -290,7 +310,32 @@ export default class API {
         let fax = new FaxManager(this.accountId, to, from, 'outbound', [], price);
         fax.flush();
 
-        //TODO: send fax and charge account
+        let pdfs = [];
+        if (files.length > 1) {
+            files.forEach(function (f) {
+                pdfs.push(PATH.UPLOAD + f.filename);
+            });
+        } else pdfs = [PATH.UPLOAD + files[0].filename];
+
+        const fid = Util.md5Hash(from + to + Date.now());
+        const destName = 'FAX-snd-' + fid + '.tiff';
+        const dest = PATH.UPLOAD + 'tiff/' + destName;
+        const convert = Util.pdfToTiff(pdfs, dest);
+        if (convert.success) {
+            const copied = Util.scp(dest);
+            if (copied) {
+                fax.setFaxId(fid);
+                fax.setTIFF(copied);
+                fax.flush();
+                return this.freeswitchConnection.sendFax(record.from, record.to, fid, copied, this.accountData.number);
+            }
+            return {
+                success: false,
+                data: 'Could not generate TIFF file'
+            };
+        }
+
+        this.freeswitchConnection.sendFax();
 
         return {
             success: true,
