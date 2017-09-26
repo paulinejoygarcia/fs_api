@@ -1,0 +1,21 @@
+.json-pretty {
+  background: #666;
+  line-height: 1.3;
+  color: #66d9ef;
+}
+
+.json-pretty .json-key {
+    color: #F92672;
+}
+
+.json-pretty .json-value {
+    color: #A6E22E;
+}
+
+.json-pretty .json-string {
+    color: #FD971F;
+}
+
+.json-pretty .json-boolean {
+    color: #AC81Fe;
+}

@@ -10,7 +10,7 @@ Picker.middleware(bodyParser.json());
 Picker.middleware(bodyParser.urlencoded({ extended: false }));
 
 Meteor.startup(() => {
-    let server = new Server();
+    server = new Server();
 
     server.onConnectMySQL();
 
