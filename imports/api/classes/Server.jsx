@@ -66,7 +66,7 @@ export default class Server {
 
                 api.setEndpoint(endpoint, subEndpoint, extEndpoint);
 
-                result = api.doProcess(request.method, data.body, this.smtpSend, this.smppSend, this.processRequestUrl);
+                result = api.doProcess(request.method, data.body);
                 data = { ...data, ...result };
                 retval = { ...retval, ...result };
             }
