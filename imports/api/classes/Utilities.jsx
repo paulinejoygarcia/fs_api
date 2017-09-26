@@ -6,7 +6,7 @@ import mime from 'mime-types';
 import fs from 'fs';
 import PhoneNumber from 'awesome-phonenumber';
 
-class Utilities {
+class Utilities { 
     decodeBase64(ciphertxt) {
         if (Meteor.isClient)
             return atob(ciphertxt);
