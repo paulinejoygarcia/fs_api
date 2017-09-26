@@ -16,7 +16,7 @@ class Header extends Component {
                         <span className="brand-icon">
                             <i className="fa fa-houzz" />
                         </span>
-                        <span className="brand-name hidden-fold">uConnectedIT</span>
+                        <span className="brand-name hidden-fold">uConnectIT</span>
                     </a>
                 </div>
                 <div className="collapse navbar-collapse">
