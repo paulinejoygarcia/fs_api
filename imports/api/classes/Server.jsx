@@ -63,7 +63,6 @@ export default class Server {
                 }
 
                 api.setEndpoint(endpoint, subEndpoint, extEndpoint);
-
                 result = api.doProcess(request.method, data.body);
                 data = { ...data, ...result };
                 retval = { ...retval, ...result };
@@ -165,6 +164,8 @@ export default class Server {
                 break;
             // requires access code
             case ENDPOINT.APP:
+			case ENDPOINT.VOICE:
+			case ENDPOINT.PUSH:
 			case ENDPOINT.FAX:
             case ENDPOINT.NUMBER:
             case ENDPOINT.SOCIAL:
@@ -175,7 +176,6 @@ export default class Server {
                     return retval;
                 }
         }
-
         // data check and sanitation 
         switch (endpoint) {
             case ENDPOINT.APP:
@@ -206,6 +206,20 @@ export default class Server {
                         break;
                 }
                 break;
+            case ENDPOINT.PUSH:
+                switch (method) {
+                    case METHOD.POST:
+                        joiSchema = {
+                            registration_id: Joi.string(true),
+                            server_key: Joi.string(true),
+                            title: Joi.string(true),
+                            body: Joi.string(true),
+                            icon: Joi.string(false,"uri"),
+                            action: Joi.string(false,"uri"),
+                        }
+                        break;
+                }
+
             case ENDPOINT.FAX:
                 switch (method) {
                     case METHOD.POST:
