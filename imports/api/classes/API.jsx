@@ -12,8 +12,9 @@ import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
 import SocialCommentManager, { SocialCommentDB } from './SocialCommentManager';
 import SocialPostManager, { SocialPostDB } from './SocialPostManager';
 import moment from 'moment';
+import MessageCtrl from './controller/Message';
+import ScreenshotsCtrl from './controller/Screenshot';
 import {PushNotifDB} from '../pushNotifications';
-
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
         this.api = api;
@@ -101,8 +102,42 @@ export default class API {
         }
         return false;
     }
+    getAccountBalance() {
+        let balance = 0;
+        if (this.accountData)
+            balance = parseFloat(this.accountData.balance) + parseFloat(this.accountData.posttoexternal) * parseFloat(this.accountData.credit_limit);
+        return balance;
+    }
 
-    doProcess(method, body) {
+    isAccountBillable(price) {
+        return (this.getAccountBalance() >= parseFloat(price));
+    }
+
+    updateAccountBalance(amount, paymentType = 'debit') {
+        if (this.accountData && parseFloat(amount)) {
+            let balance = parseFloat(this.accountData.balance) - parseFloat(amount);
+            if (paymentType == 'credit')
+                balance = parseFloat(this.accountData.balance) + parseFloat(amount);
+            return this.databaseConnection.update('accounts', { balance }, `id=${this.accountData.id}`);
+        }
+    }
+
+    didAccountOwner(number) {
+        let query = 'SELECT dids.accountid as aid, accounts.number as anum FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? ';
+        let result = this.databaseConnection.selectOne(query, [number]);
+        if (result) {
+            return {
+                success: true,
+                data: {
+                    id: result.aid,
+                    accountId: result.anum,
+                }
+            }
+        }
+        return result;
+    }
+
+    doProcess(method, body, smtpSend, smppSend, processRequestUrl) {
         delete body.accessCode;
         switch (this.endpoint) {
             case ENDPOINT.AUTH: {
@@ -340,6 +375,58 @@ export default class API {
                     code: 200,
                     data: 'success'
                 };
+
+            case ENDPOINT.MESSAGE:
+                switch (method) {
+                    case METHOD.POST:
+                        try {
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            let res = ctrl.insert();
+                            if (res.success) res = ctrl.send();
+                            return res;
+                        } catch (err) {
+                            console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
+                        }
+                        break;
+                    case METHOD.GET:
+                        try {
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            return {
+                                success: true,
+                                code: 200,
+                                data: ctrl.list()
+                            };
+                        } catch (err) {
+                            console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
+                        }
+                        break;
+                    default:
+                        return {
+                            success: false,
+                            code: 404,
+                            data: {}
+                        };
+                }
+                break;
+            case ENDPOINT.VIDEO:
+                switch (method) {
+                    case METHOD.POST:
+                        switch (this.subEndpoint) {
+                            case ENDPOINT_ACTION.VIDEO_SCREENSHOT:
+                                const ctrl = new ScreenshotsCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                                let res = ctrl.insert();
+                                if (res.success) res = ctrl.send();
+                                return res;
+                        }
+                        break;
+                    default:
+                        return {
+                            success: false,
+                            code: 404,
+                            data: {}
+                        };
+                }
+                break;
         }
         return { success: false, code: 404, error: 'Invalid request!' };
     }

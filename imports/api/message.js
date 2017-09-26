@@ -1,0 +1,1 @@
+export const MessageDB = new Mongo.Collection('messages');
