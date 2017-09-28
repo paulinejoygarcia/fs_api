@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import ReactDOM from 'react-dom';
 import StripeCheckout from 'react-stripe-checkout';
 import payment from '/imports/api/payment';
-import {STRIPE} from '/imports/api/classes/Const';
+import { STRIPE } from '/imports/api/classes/Const';
 class Billing extends Component {
     constructor(props) {
         super(props);
@@ -83,11 +83,11 @@ class Billing extends Component {
                     </tr>
                 );
             });
-        else return (<tr/>)
+        else return (<tr />)
     }
 
     render() {
-        if (!this.state.ready) return <div/>;
+        if (!this.state.ready) return <div />;
         return (
             <div className="container">
                 <div className="row">
@@ -109,7 +109,7 @@ class Billing extends Component {
                                     panelLabel="Add"
                                     amount={this.getAmount()}
                                     currency="USD"
-                                    stripeKey={STRIPE.PUBLIC}
+                                    stripeKey={this.props.stripeKey}
                                     locale="en"
                                     billingAddress={false}
                                     zipCode={true}
@@ -126,7 +126,7 @@ class Billing extends Component {
                         )
                     }
                 </div>
-                <hr/>
+                <hr />
                 <div className="row">
                     <legend><strong>Step 2:</strong> Add Credit / Funds</legend>
                     <div className="col-md-12">
@@ -134,7 +134,7 @@ class Billing extends Component {
                             <div className="form-group">
                                 <label htmlFor="">Select Amount To Add</label>
                                 <select name="amount" value={this.state.amount} onChange={this.handleInputChange}
-                                        className="form-control">
+                                    className="form-control">
                                     <option value="5">$5.00</option>
                                     <option value="10">$10.00</option>
                                     <option value="15">$15.00</option>
@@ -243,19 +243,19 @@ class Billing extends Component {
                             {(this.props.ccInfo.length) ? (
                                 <table className="table table-responsive table-hover">
                                     <thead>
-                                    <tr>
-                                        <th>Email</th>
-                                        <th>type</th>
-                                        <th>last 4</th>
-                                        <th>Credits</th>
-                                        <th></th>
-                                    </tr>
+                                        <tr>
+                                            <th>Email</th>
+                                            <th>type</th>
+                                            <th>last 4</th>
+                                            <th>Credits</th>
+                                            <th></th>
+                                        </tr>
                                     </thead>
                                     <tbody>
-                                    {this.renderCCInfo()}
+                                        {this.renderCCInfo()}
                                     </tbody>
                                 </table>
-                            ) : (<div/>)}
+                            ) : (<div />)}
                         </div>
                     </div>
                 </div>
