@@ -141,7 +141,8 @@ export default class Server {
             case METHOD.PUT:
                 retval.body = {
                     ...params.query,
-                    ...request.body
+                    ...request.body,
+                    ...{ files: request.files }
                 }
                 break;
         }
