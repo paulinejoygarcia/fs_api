@@ -1,7 +1,7 @@
 import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 import {REPORTS}  from './classes/Const';
-export const PushNotifDB = new Mongo.Collection(Meteor.settings.collections.push || 'push_notifications',{ idGeneration: 'MONGO' });
+export const PushNotifDB = new Mongo.Collection('push_notifications',{ idGeneration: 'MONGO' });
 if (Meteor.isServer) {
     Meteor.publish(REPORTS.PUSH,function (data) {
         let cursor = null;

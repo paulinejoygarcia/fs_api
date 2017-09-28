@@ -10,6 +10,7 @@
     "bcrypt": "^1.0.2",
     "body-parser": "^1.17.2",
     "envelope": "^1.0.7",
+    "exenv": "^1.2.2",
     "fb": "^2.0.0",
     "fibers": "^1.0.15",
     "follow-redirects": "^1.2.4",

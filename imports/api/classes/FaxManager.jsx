@@ -2,7 +2,7 @@ import Util from '/imports/api/classes/Utilities';
 import { Meteor } from 'meteor/meteor';
 import moment from 'moment';
 
-export const FaxDB = new Mongo.Collection(Meteor.settings.collections.fax || 'faxes', { idGeneration: 'MONGO' });
+export const FaxDB = new Mongo.Collection('faxes', { idGeneration: 'MONGO' });
 
 export default class FaxManager {
     constructor(accountId, to, from, direction, files, price) {

@@ -72,9 +72,24 @@ if (Meteor.isServer) {
         try {
             this.userId = "LNGZyhhWcXej85ysq";
             check(this.userId, String);
-
-            let query = 'SELECT * FROM astpp.invoices i JOIN invoice_details id ON id.invoiceid = i.id WHERE i.accountid = ?';
-            return server.dbConnection.select(query, [4]);
+            let query =
+                'SELECT i.id,' +
+                'i.accountid,' +
+                'i.amount,' +
+                'i.status,' +
+                'id.description,' +
+                'id.created_date as date,' +
+                'id.item_type as item,' +
+                'i.invoiceid as iid,' +
+                'ic.company_name as company,' +
+                'ic.address as address,' +
+                'ic.city as city,' +
+                'ic.province as province,' +
+                'ic.country as country ' +
+                'FROM astpp.invoices i ' +
+                'JOIN invoice_details id ON id.invoiceid = i.id ' +
+                'JOIN invoice_conf ic ON ic.accountid = i.accountid WHERE i.accountid = ?';
+            return server.dbConnection.select(query, [1]);
 
         } catch (err) {
             showError('method[%s]: %s.', FetchInvoices, err.message);

@@ -2,7 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 import {REPORTS}  from './classes/Const';
 
-export const CallsDB = new Mongo.Collection(Meteor.settings.collections.call || 'calls',{ idGeneration: 'MONGO' });
+export const CallsDB = new Mongo.Collection('calls',{ idGeneration: 'MONGO' });
 
 if (Meteor.isServer) {
     Meteor.publish(REPORTS.CALLS,function (data) {

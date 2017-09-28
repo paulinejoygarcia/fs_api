@@ -2,7 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 import {REPORTS}  from './classes/Const';
 
-export const MessageDB = new Mongo.Collection(Meteor.settings.collections.message || 'messages');
+export const MessageDB = new Mongo.Collection('messages');
 if (Meteor.isServer) {
     Meteor.publish(REPORTS.MESSAGES,function (data) {
         let cursor = null;
