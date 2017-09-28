@@ -1,8 +1,12 @@
+import {Meteor} from 'meteor/meteor';
 import React, { Component } from 'react';
 import { createContainer } from 'meteor/react-meteor-data';
 import Reactable from 'reactable';
 import {REPORTS} from '../../../api/classes/Const';
 import {PushNotifDB} from '../../../api/pushNotifications';
+import {CallsDB} from '../../../api/calls';
+import {MessageDB} from '../../../api/message';
+import {FaxDB} from '../../../api/classes/FaxManager';
 import '../../stylesheets/reports.css';
 const Table = Reactable.Table,
     Tr = Reactable.Tr,
@@ -113,8 +117,11 @@ class Reports extends Component {
                             <div className="row">
                                 <div className="col-md-12">
                                     <select name="reports" onChange={this.handleChange.bind(this)}
-                                           value={this.state.reports} className="form-control">
+                                            value={this.state.reports} className="form-control">
                                         <option value={REPORTS.PUSH}>Push Notifications</option>
+                                        <option value={REPORTS.CALLS}>Calls</option>
+                                        <option value={REPORTS.FAXES}>Faxes</option>
+                                        <option value={REPORTS.MESSAGES}>Messages</option>
                                     </select>
                                 </div>
                             </div>
@@ -137,10 +144,15 @@ class Reports extends Component {
             <div className="row mb10">
                 <div className="col-md-12">
                     {!this.state.loading ?
-                        <Table className="table table-hover table-bordered table-responsive" itemsPerPage={20}
-                               sortable={true} pageButtonLimit={5}>
-                            {this.renderData()}
-                        </Table> :
+                        <div>
+                            {this.props.data[this.state.reports].length < 1 ?
+                                <span className="text-center">No record found</span>:
+                                <Table className="table table-hover table-bordered table-responsive" itemsPerPage={20}
+                                       sortable={true} pageButtonLimit={5}>
+                                    {this.renderData()}
+                                </Table>
+                            }
+                        </div>:
                         <div className="text-center mt20">
                             <i className="fa fa-2x fa-spin fa-circle-o-notch"/>
                         </div>
@@ -166,8 +178,12 @@ Reports.propTypes = {
 };
 
 export default createContainer(() => {
+    console.log(Meteor.settings);
     let data = {};
     data[REPORTS.PUSH] = PushNotifDB.find().fetch();
+    data[REPORTS.CALLS] = CallsDB.find().fetch();
+    data[REPORTS.MESSAGES] = MessageDB.find().fetch();
+    data[REPORTS.FAXES] = FaxDB.find().fetch();
     return {
         user: Meteor.user(),
         data: data,

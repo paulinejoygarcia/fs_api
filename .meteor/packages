@@ -25,8 +25,4 @@ momentjs:moment
 react-meteor-data
 fourseven:scss
 accounts-password
-meteorhacks:npm
-
-
-npm-container
 ostrio:files

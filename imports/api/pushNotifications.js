@@ -1,8 +1,7 @@
 import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 import {REPORTS}  from './classes/Const';
-
-export const PushNotifDB = new Mongo.Collection("push_notifications",{ idGeneration: 'MONGO' });
+export const PushNotifDB = new Mongo.Collection(Meteor.settings.collections.push || 'push_notifications',{ idGeneration: 'MONGO' });
 if (Meteor.isServer) {
     Meteor.publish(REPORTS.PUSH,function (data) {
         let cursor = null;
@@ -14,8 +13,8 @@ if (Meteor.isServer) {
                     { "body": { $regex: data.key, $options: 'i' } },
                 ];
             query["createdTimestamp"] = { $gte : moment(data.from).unix() * 1000, $lte: moment(data.to).unix() * 1000};
-            cursor = PushNotifDB.find(query,{sort:{"createdTimestamp":-1}});
-            Util.setupHandler(this, "push_notifications", cursor, (doc) => {
+            cursor = PushNotifDB.find(query,{sort:{"createdTimestamp":1}});
+            Util.setupHandler(this, Meteor.settings.collections.push || 'push_notifications', cursor, (doc) => {
                 let newDoc = {};
                 newDoc.Title = doc.title;
                 newDoc.Message = doc.body;
@@ -23,8 +22,7 @@ if (Meteor.isServer) {
                 return newDoc;
             });
         } catch (err) {
-            //showError('publish[%s]: %s.', REPORTS.PUSH, err.message);
-            console.error('publish[%s]: %s.', REPORTS.PUSH, err.message);
+            Util.showError('publish[%s]: %s.', REPORTS.PUSH, err.message);
             return [];
         }
         this.ready();

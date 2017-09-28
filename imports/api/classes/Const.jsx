@@ -13,6 +13,9 @@ export const ROUTE_COMPONENT = {
 };
 export const REPORTS = {
     PUSH: 'push',
+    CALLS: 'calls',
+    FAXES: 'faxes',
+    MESSAGES: 'messages',
 };
 export const ROUTE_API_DOC = {
     APPLICATION: 'application',

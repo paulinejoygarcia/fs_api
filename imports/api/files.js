@@ -7,11 +7,12 @@ let Avatar = new FilesCollection({
     permissions: 0774,
     parentDirPermissions: 0774,
     allowClientCode: true,
-    storagePath: '/data/uploads/',
+    storagePath: Meteor.settings.public.config.files,
     onBeforeUpload: function (file) {
-        if (!/png|jpe?g/i.test(file.extension || ''))
-            return 'File type is not accepted!';
-        return true;
+        if (/png|jpe?g/i.test(file.extension || '')) {
+            return true;
+        }
+        return 'File type is not accepted!';
     },
     onAfterUpload:function(fileReference){
         if (/png|jpe?g/i.test(fileReference.extension || '') && Meteor.isServer) {
@@ -19,8 +20,6 @@ let Avatar = new FilesCollection({
             createThumbnails(this, fileReference, 200,Meteor.bindEnvironment((error,fileRef) => {
                 if (error)
                     console.error(error);
-                else
-                    console.log("image thumbnail created!");
             }));
         }
     }
