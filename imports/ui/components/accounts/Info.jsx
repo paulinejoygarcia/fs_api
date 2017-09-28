@@ -3,11 +3,9 @@ import PropTypes from 'prop-types';
 import { createContainer } from 'meteor/react-meteor-data';
 import React, { Component } from 'react';
 import { Meteor } from 'meteor/meteor';
-import { UsersSave } from '../../../api/users';
-import { UsersSavePassword } from '../../../api/users';
+import { UsersSave,UsersSavePassword } from '../../../api/users';
 //import {showGritter} from '../../../api/classes/Utilities';
 import {GRITTER_STATUS} from '../../../api/classes/Const';
-
 class Info extends Component {
 
     constructor(props) {
@@ -20,13 +18,13 @@ class Info extends Component {
         this.firstName.value = this.props.user?this.props.user.profile.first:"";
         this.lastName.value = this.props.user?this.props.user.profile.last:"";
         this.email.value = this.props.user?this.props.user.emails[0].address:"";
-        this.astpp.value = this.props.user?this.props.user.profile.astppId:"";
+        this.astpp.value = this.props.user?this.props.user.profile.astpp:"";
     }
     componentDidUpdate(){
         this.firstName.value = this.props.user?this.props.user.profile.first:"";
         this.lastName.value = this.props.user?this.props.user.profile.last:"";
         this.email.value = this.props.user?this.props.user.emails[0].address:"";
-        this.astpp.value = this.props.user?this.props.user.profile.astppId:"";
+        this.astpp.value = this.props.user?this.props.user.profile.astpp:"";
     }
     saveInfo(e){
         e.preventDefault();

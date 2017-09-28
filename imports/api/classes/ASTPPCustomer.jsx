@@ -254,7 +254,6 @@ export default class ASTPPCustomer {
         }
 
         //$this->common->mail_to_users('email_add_user', $accountinfo);
-
-        return lastId;
+        return (lastId === 0 || lastId)?accountId:false;
     }
 }

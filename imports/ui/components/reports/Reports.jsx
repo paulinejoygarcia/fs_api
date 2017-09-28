@@ -1,10 +1,13 @@
 import React, { Component } from 'react';
+import { createContainer } from 'meteor/react-meteor-data';
 import Reactable from 'reactable';
-import './stylesheets/reports.css';
+import {REPORTS} from '../../../api/classes/Const';
+import {PushNotifDB} from '../../../api/pushNotifications';
+import '../../stylesheets/reports.css';
 const Table = Reactable.Table,
     Tr = Reactable.Tr,
     Td = Reactable.Td;
-export default class Reports extends Component {
+class Reports extends Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -12,10 +15,17 @@ export default class Reports extends Component {
             toDate: moment().format("YYYY-MM-DD"),
             search: "",
             loading: false,
-            data: [{ id: 1, val: "test" }, { id: 2, val: "test2" }, { id: 3, val: "test", option: "equal" }],
+            reports:REPORTS.PUSH
         };
+        this.subscribe = null;
     }
-
+    componentDidMount(){
+        this.getData();
+    }
+    componentWillUnmount(){
+        if(this.subscribe !== null)
+            this.subscribe.stop();
+    }
     getData() {
         this.setState({ loading: true });
         let data = {
@@ -23,8 +33,11 @@ export default class Reports extends Component {
             to: this.state.toDate,
             key: this.state.search,
         };
-        console.log(data);
-        //Todo Get data on server
+        if(this.subscribe !== null)
+            this.subscribe.stop();
+        this.subscribe = Meteor.subscribe(this.state.reports,data,()=>{
+            this.setState({ loading: false });
+        });
     }
 
     handleChange(event) {
@@ -47,6 +60,8 @@ export default class Reports extends Component {
 
     renderDataItem(data) {
         return Object.keys(data).map((key, index) => {
+            if(key === "_id" || key === "max")
+                return null;
             return (
                 <Td key={index} column={key}>
                     {data[key]}
@@ -56,7 +71,7 @@ export default class Reports extends Component {
     }
 
     renderData() {
-        return this.state.data.map((data, index) => {
+        return this.props.data[this.state.reports].map((data, index) => {
             return (
                 <Tr key={index}>
                     {this.renderDataItem(data)}
@@ -64,36 +79,47 @@ export default class Reports extends Component {
             );
         });
     }
-
-    render() {
+    renderInfo(){
         return (
-            <div className="container">
-                <div className="row mb10">
-                    <h2>{this.props.title || "Reports"}</h2>
-                </div>
-                <div className="row reports-header mb10">
-                    <form onSubmit={() => {
-                        this.getData()
-                    }} className="col-md-12">
+        <div className="container">
+            <div className="row reports-header mb10">
+                <form onSubmit={() => {
+                    this.getData()
+                }} className="col-md-12">
+                    <div className="row">
                         <div className="col-md-3">
-                            <div className="col-md-2 label-beside">
-                                From:
-                            </div>
-                            <div className="col-md-10">
-                                <input type="date" name="fromDate" onChange={this.handleChange.bind(this)}
-                                       value={this.state.fromDate} className="form-control"/>
+                            <div className="row">
+                                <div className="col-md-2 label-beside">
+                                    From:
+                                </div>
+                                <div className="col-md-10">
+                                    <input type="date" name="fromDate" onChange={this.handleChange.bind(this)}
+                                           value={this.state.fromDate} className="form-control"/>
+                                </div>
                             </div>
                         </div>
                         <div className="col-md-3">
-                            <div className="col-md-2 label-beside">
+                            <div className="row">
+                                <div className="col-md-2 label-beside">
                                 To:
                             </div>
-                            <div className="col-md-10">
-                                <input type="date" name="toDate" onChange={this.handleChange.bind(this)}
-                                       value={this.state.toDate} className="form-control"/>
+                                <div className="col-md-10">
+                                    <input type="date" name="toDate" onChange={this.handleChange.bind(this)}
+                                           value={this.state.toDate} className="form-control"/>
+                                </div>
                             </div>
                         </div>
-                        <div className="col-md-3 col-md-offset-3">
+                        <div className="col-md-3">
+                            <div className="row">
+                                <div className="col-md-12">
+                                    <select name="reports" onChange={this.handleChange.bind(this)}
+                                           value={this.state.reports} className="form-control">
+                                        <option value={REPORTS.PUSH}>Push Notifications</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="col-md-3">
                             <div className="input-group stylish-input-group">
                                 <input type="text" value={this.state.search} name="search"
                                        onChange={this.handleChange.bind(this)} className="form-control"
@@ -105,9 +131,11 @@ export default class Reports extends Component {
                             </span>
                             </div>
                         </div>
-                    </form>
-                </div>
-                <div className="row mb10">
+                    </div>
+                </form>
+            </div>
+            <div className="row mb10">
+                <div className="col-md-12">
                     {!this.state.loading ?
                         <Table className="table table-hover table-bordered table-responsive" itemsPerPage={20}
                                sortable={true} pageButtonLimit={5}>
@@ -119,6 +147,29 @@ export default class Reports extends Component {
                     }
                 </div>
             </div>
+        </div>
+        );
+    }
+    render() {
+        return (
+            <div className="row">
+                <div className="col-md-12">
+                    <h4 className="mb-4">Reports</h4>
+                </div>
+                {this.renderInfo()}
+            </div>
         );
     }
 }
+
+Reports.propTypes = {
+};
+
+export default createContainer(() => {
+    let data = {};
+    data[REPORTS.PUSH] = PushNotifDB.find().fetch();
+    return {
+        user: Meteor.user(),
+        data: data,
+    };
+}, Reports);
