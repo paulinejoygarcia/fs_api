@@ -1,3 +1,4 @@
+
 import { http, https } from 'follow-redirects';
 import { Meteor } from 'meteor/meteor';
 import { GRITTER_STATUS } from './Const';
@@ -23,6 +24,15 @@ class Utilities {
             return new Buffer(plaintxt).toString('base64');
         }
         return plaintxt
+    }
+    encodeImageFileAsURL(element, callback) {
+        let file = element.currentTarget.files[0];
+        let reader = new FileReader();
+        reader.onloadend = function() {
+            if(callback)
+                callback.call(this, reader.result);
+        };
+        reader.readAsDataURL(file);
     }
     random(max, min) {
         return Math.floor(Math.random() * max) + min;

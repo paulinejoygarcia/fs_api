@@ -40,8 +40,10 @@
     "scp2": "^0.5.0",
     "simplesmtp": "^0.3.35",
     "smpp": "^0.3.1",
+    "spawn-sync": "^1.0.15",
     "split-sms": "^0.1.7",
     "stripe": "^5.1.0",
+    "try-thread-sleep": "^1.0.2",
     "twitter": "^1.7.1",
     "xml-parser": "^1.2.1"
   }
