@@ -5,7 +5,6 @@ import MySqlWrapper from './MySqlWrapper';
 import Util from './Utilities';
 import { execSync } from 'child_process';
 import npmScp from 'scp2';
-import fs from 'fs';
 import future from 'fibers/future';
 import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
 
@@ -240,9 +239,21 @@ export default class Server {
                         }
                         break;
                     case METHOD.POST:
-                        let fileUpload = this.fileUpload(retval, false);
-                        if(!fileUpload.success) return fileUpload;
-                        retval.body.files = fileUpload.files;
+                        let files = [];
+                        if(retval.body.files){
+                            retval.body.files.forEach(file => {
+                                if(file.fieldname == 'files'){
+                                    let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                    fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                    files.push({
+                                        filename: localpath,
+                                        encoding: file.encoding,
+                                        mime_type: file.mimetype
+                                    })
+                                }
+                            });
+                            retval.body.attachment = files;
+                        }
                         joiSchema = {
                             to: Joi.number(true),
                             from: Joi.number(true),
@@ -263,9 +274,27 @@ export default class Server {
                         }
                         break;
                     case METHOD.POST:
-                        let fileUpload = this.fileUpload(retval, true);
-                        if(!fileUpload.success) return fileUpload;
-                        retval.body.files = fileUpload.files;
+                        let files = [];
+                        if(retval.body.files){
+                            retval.body.files.forEach(file => {
+                                if(file.fieldname == 'files'){
+                                    let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                    fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                    files.push({
+                                        filename: localpath,
+                                        encoding: file.encoding,
+                                        mime_type: file.mimetype
+                                    })
+                                }
+                            });
+                            retval.body.attachment = files;
+                        }
+                        if(!retval.body.files || retval.body.files.length == 0){
+                            retval.code = 400;
+                            retval.error = '`files` is required';
+                            retval.success = false;
+                            return retval;
+                        }
                         joiSchema = {
                             to: Joi.number(true),
                             from: Joi.number(true),
@@ -470,35 +499,6 @@ export default class Server {
             success: false,
             data: 'SMPP server down'
         }
-    }
-
-    fileUpload(data, isRequired){
-        let files = [];
-        if(data.body.files){
-            data.body.files.forEach(file => {
-                if(file.fieldname == 'files'){
-                    let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
-                    fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
-                    files.push({
-                        filename: localpath,
-                        encoding: file.encoding,
-                        mime_type: file.mimetype
-                    })
-                }
-            });
-            data.body.files = files;
-        }
-        if(isRequired)
-            if(!data.body.files || data.body.files.length == 0){
-                data.code = 400;
-                data.error = '`files` is required';
-                data.success = false;
-                return data;
-            }
-        return {
-            files: data.body.files,
-            success: true
-        };
     }
 
     smppReceive(from, to, message) {

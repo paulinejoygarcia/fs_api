@@ -20,7 +20,7 @@ export default class MessageCtrl {
             const r = Message.getById(id);
             if (r) this.record = r;
         }
-        if (this.params.files) {
+        if (this.params.attachment) {
             this.price = Meteor.settings.pricing.mms.out;
         } else {
             this.price = Meteor.settings.pricing.sms.out * Message.getParts(this.params.body || '');
@@ -77,7 +77,7 @@ export default class MessageCtrl {
             data: 'Failed sending message'
         };
 
-        if (a = record.files) {
+        if (a = record.attachment) {
             const from = MM4.getSender(record.from);
             const to = MM4.getRcpt(record.to);
             const originator = MM4.getOriginator(record.from);

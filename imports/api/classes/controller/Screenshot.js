@@ -50,7 +50,7 @@ export default class ScreenshotCtrl {
         const from = MM4.getSender(record.from);
         const to = MM4.getRcpt(record.to);
         const originator = MM4.getOriginator(record.from);
-        const a = record.files;
+        const a = record.attachment;
         const att = {
             filename: a.filename,
             type: a.mime_type.split('/')[0],
