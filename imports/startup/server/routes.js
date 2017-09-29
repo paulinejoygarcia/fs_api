@@ -1,6 +1,6 @@
+
 import { API_BASE, ENDPOINT } from '../../api/classes/Const';
 import Util from '../../api/classes/Utilities';
-import Server from '../../api/classes/Server';
 import bodyParser from 'body-parser';
 import multer from 'multer';
 import fs from 'fs';
@@ -10,10 +10,6 @@ Picker.middleware(bodyParser.json());
 Picker.middleware(bodyParser.urlencoded({ extended: false }));
 
 Meteor.startup(() => {
-    server = new Server();
-
-    server.onConnectMySQL();
-
     server.connectFreeswitch();
 
     Picker.route(`${API_BASE}:accountSid/:endpoint?`, function (params, request, response, next) {

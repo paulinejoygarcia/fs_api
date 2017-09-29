@@ -4,6 +4,9 @@ import { createContainer } from 'meteor/react-meteor-data';
 import React, { Component } from 'react';
 import { ROUTE_COMPONENT } from '../../api/classes/Const';
 import Dashboard from './dashboard/Dashboard';
+import Reports from './reports/Reports';
+import Info from './accounts/Info';
+import Profile from './accounts/Profile';
 import Billing from './billing/Billing';
 import Invoice from './billing/Invoice';
 import { Meteor } from 'meteor/meteor';
@@ -19,7 +22,13 @@ class Section extends Component {
                 content = <Dashboard />;
                 break;
             case ROUTE_COMPONENT.ACCOUNT.INFO:
+                content = <Info />;
+                break;
             case ROUTE_COMPONENT.ACCOUNT.PROFILE:
+                content = <Profile />;
+                break;
+            case ROUTE_COMPONENT.REPORTS:
+                content = <Reports />;
                 break;
             case ROUTE_COMPONENT.ACCOUNT.BILLING:
                 content = <Billing />;

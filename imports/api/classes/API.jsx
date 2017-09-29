@@ -14,7 +14,7 @@ import SocialPostManager, { SocialPostDB } from './SocialPostManager';
 import moment from 'moment';
 import MessageCtrl from './controller/Message';
 import ScreenshotsCtrl from './controller/Screenshot';
-import {PushNotifDB} from '../pushNotifications';
+import { PushNotifDB } from '../pushNotifications';
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
         this.api = api;
@@ -246,12 +246,12 @@ export default class API {
                         }
                     }
                 }
-				return {
+                return {
                     success: true,
                     code: 200,
                     data
                 };
-			case ENDPOINT.VOICE:
+            case ENDPOINT.VOICE:
                 data = [];
                 query = 'SELECT callstart as call_start,' +
                     'callerid as caller_id,' +
@@ -263,11 +263,11 @@ export default class API {
                     ' FROM cdrs WHERE accountid = ' +
                     '(SELECT id from accounts WHERE account_id = ?)' +
                     ' ORDER BY callstart DESC' +
-                    (body.limit?' LIMIT '+body.limit:'');
-                this.databaseConnection.select(query,[this.accountId]).forEach((accInfo)=>{
+                    (body.limit ? ' LIMIT ' + body.limit : '');
+                this.databaseConnection.select(query, [this.accountId]).forEach((accInfo) => {
                     data.push({
-                        call_start:accInfo.call_start,
-                        caller_id:accInfo.caller_id,
+                        call_start: accInfo.call_start,
+                        caller_id: accInfo.caller_id,
                         called_number: accInfo.called_number,
                         duration: accInfo.duration,
                         disposition: accInfo.disposition,
@@ -280,19 +280,19 @@ export default class API {
                     code: 200,
                     data: data
                 }
-			case ENDPOINT.PUSH:
-			    data = [];
-			    switch(method) {
+            case ENDPOINT.PUSH:
+                data = [];
+                switch (method) {
                     case METHOD.GET:
-                        let queryPush = {account_id:this.accountId};
-                        let optionsPush = {sort:{createdTimestamp:-1}};
-                        if(this.subEndpoint)
+                        let queryPush = { account_id: this.accountId };
+                        let optionsPush = { sort: { createdTimestamp: -1 } };
+                        if (this.subEndpoint)
                             queryPush._id = new Mongo.ObjectID(this.subEndpoint);
-                        if(body.limit)
+                        if (body.limit)
                             optionsPush.limit = parseInt(body.limit);
-                        PushNotifDB.find(queryPush,optionsPush).fetch().forEach((PushNotif)=> {
+                        PushNotifDB.find(queryPush, optionsPush).fetch().forEach((PushNotif) => {
                             data.push({
-                                _id:PushNotif._id._str,
+                                _id: PushNotif._id._str,
                                 registration_id: PushNotif.registration_id,
                                 title: PushNotif.title,
                                 body: PushNotif.body,
@@ -314,23 +314,23 @@ export default class API {
                     case METHOD.POST:
                         body.account_id = this.accountId;
                         body.createdTimestamp = moment().valueOf();
-                        if(!this.isAccountBillable(Meteor.settings.pricing.pushNotification))
+                        if (!this.isAccountBillable(Meteor.settings.pricing.pushNotification))
                             return {
-                                success:false,
-                                code:400,
-                                error:'Insufficient funds to process request'
+                                success: false,
+                                code: 400,
+                                error: 'Insufficient funds to process request'
                             };
                         let chargeResponse = this.chargeAccount(Meteor.settings.pricing.pushNotification);
-                        if(!chargeResponse.success)
+                        if (!chargeResponse.success)
                             return {
-                                success:false,
-                                code:500,
-                                error:chargeResponse.error
+                                success: false,
+                                code: 500,
+                                error: chargeResponse.error
                             };
                         return {
                             success: true,
-                            code:200,
-                            data: {chargeResponse,PushNotifId:PushNotifDB.insert(body)._str}
+                            code: 200,
+                            data: { chargeResponse, PushNotifId: PushNotifDB.insert(body)._str }
                         };
                         break;
                 }
@@ -493,9 +493,9 @@ export default class API {
         const fid = Util.md5Hash(from + to + Date.now());
         const destName = 'FAX-snd-' + fid + '.tiff';
         const dest = PATH.UPLOAD + 'tiff/' + destName;
-        const convert = Util.pdfToTiff(pdfs, dest);
+        const convert = server.pdfToTiff(pdfs, dest);
         if (convert.success) {
-            const copied = Util.scp(dest);
+            const copied = server.scp(dest);
             if (copied) {
                 fax.setFaxId(fid);
                 fax.setTIFF(copied);

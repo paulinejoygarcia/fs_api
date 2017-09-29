@@ -1,11 +1,15 @@
 {
     "public": {
         "config": {
-            "title": "uConnectIT"
+            "title": "uConnectIT",
+            "files": "/data/uploads"
         }
     },
     "collections": {
         "fax": "faxes",
+        "call": "calls",
+        "message": "messages",
+        "push": "push_notifications",
         "socialAccount": "social_accounts",
         "socialComment": "social_comments",
         "socialPost": "social_posts"
@@ -19,7 +23,8 @@
             "user": "root",
             "password": "",
             "database": "db"
-        }
+        },
+        "private_key":""
     },
     "stripe": {
         "test": {
