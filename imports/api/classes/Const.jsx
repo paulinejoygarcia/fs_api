@@ -8,9 +8,15 @@ export const ROUTE_COMPONENT = {
         PROFILE: 'profile',
         BILLING: 'billing',
         INVOICE: 'invoices',
-    }
+    },
+    REPORTS: 'reports',
 };
-
+export const REPORTS = {
+    PUSH: 'push',
+    CALLS: 'calls',
+    FAXES: 'faxes',
+    MESSAGES: 'messages',
+};
 export const ROUTE_API_DOC = {
     APPLICATION: 'application',
     FAX: 'fax',
