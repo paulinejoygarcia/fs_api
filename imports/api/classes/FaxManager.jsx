@@ -48,7 +48,7 @@ export default class FaxManager {
         this.json.tiff = tiff;
     }
     setPrice(price) {
-        if(parseFloat(price))
+        if (parseFloat(price))
             this.json.price = parseFloat(price);
     }
     setStatus(status) {
@@ -67,6 +67,7 @@ export default class FaxManager {
             faxId: this.json.faxId,
             totalPages: this.json.totalPages,
             transferredPages: this.json.transferredPages,
+            result: this.json.result,
             createdDt: moment(this.json.createdDt).format('YYYY-MM-DD HH:mm:ss')
         }
     }

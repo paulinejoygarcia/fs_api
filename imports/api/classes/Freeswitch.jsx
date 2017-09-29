@@ -36,14 +36,115 @@ export default class Freeswitch {
             this.astppDB = wrapper;
     }
 
+    getAccountCarrierRates(accountId, destinationNumber) {
+        let numberLoop = ((number, code = '') => {
+            let numberLength = number.length;
+            if (!code)
+                code = 'pattern';
+
+            let _numberLoopStr = '(';
+            while (numberLength > 0) {
+                _numberLoopStr += `${code} ='^${destinationNumber.substring(0, numberLength)}.*' OR `;
+                numberLength -= 1;
+            }
+            _numberLoopStr += `${code} ='--')`;
+            return _numberLoopStr;
+        });
+        let getRate = ((_numberLoopStr, pricelistId) => {
+            let query = `SELECT * FROM routes WHERE ${_numberLoopStr} AND status = 0 AND pricelist_id = ${pricelistId} ORDER BY LENGTH(pattern) DESC,cost DESC LIMIT 1`;
+            return this.astppDB.selectOne(query);
+        });
+        let getPricelist = ((id) => {
+            let query = `select * from pricelists WHERE id = ${id} AND status = 0`;
+            return this.astppDB.selectOne(query);
+        });
+        if (this.accountData) {
+            let rateCardId = this.accountData.pricelist_id;
+            let numberLoopStr = numberLoop(destinationNumber);
+            let rate = getRate(numberLoopStr, rateCardId);
+            if (rate) {
+                let rateCarrierId = rate.trunk_id;
+                let pricelist = getPricelist(rateCardId);
+                if (pricelist) {
+                    let routingType = pricelist.routing_type;
+                    let carrierRates = [];
+                    let query = '';
+                    if (routingType == 1) {
+                        query = `SELECT TK.id as trunk_id,TK.codec,GW.name as path,GW.dialplan_variable,TK.provider_id,TR.init_inc,TK.status,TK.dialed_modify,TK.maxchannels,TR.pattern,TR.id as outbound_route_id,TR.connectcost,TR.comment,TR.includedseconds,TR.cost,TR.inc,TR.prepend,TR.strip,(select name from gateways where status=0 AND id = TK.failover_gateway_id) as path1,(select name from gateways where status=0 AND id = TK.failover_gateway_id1) as path2 FROM (select * from outbound_routes order by LENGTH (pattern) DESC) as TR trunks as TK,gateways as GW WHERE GW.status=0 AND GW.id= TK.gateway_id AND TK.status=0 AND TK.id= TR.trunk_id AND ${numberLoopStr} AND TR.status = 0 `;
+                    } else {
+                        query = `SELECT TK.id as trunk_id,TK.codec,GW.name as path,GW.dialplan_variable,TK.provider_id,TR.init_inc,TK.status,TK.dialed_modify,TK.maxchannels,TR.pattern,TR.id as outbound_route_id,TR.connectcost,TR.comment,TR.includedseconds,TR.cost,TR.inc,TR.prepend,TR.strip,(select name from gateways where status=0 AND id = TK.failover_gateway_id) as path1,(select name from gateways where status=0 AND id = TK.failover_gateway_id1) as path2 FROM outbound_routes as TR,trunks as TK,gateways as GW WHERE GW.status=0 AND GW.id= TK.gateway_id AND TK.status=0 AND TK.id= TR.trunk_id AND ${numberLoopStr} AND TR.status = 0 `;
+                    }
+
+                    if (parseInt(rateCarrierId) > 0) {
+                        query += ` AND TR.trunk_id=${rateCarrierId}`;
+                    } else {
+                        let queryTrunks = `SELECT GROUP_CONCAT(trunk_id) as ids FROM routing WHERE pricelist_id=${rateCardId}`;
+                        let trunkIds = this.astppDB.selectOne(queryTrunks);
+
+                        if (trunkIds) {
+                            if (trunkIds.ids == '')
+                                trunkIds.ids = 0;
+
+                            query += ` AND TR.trunk_id IN (${trunkIds.ids})`;
+                        }
+                        if (routingType == 1)
+                            query += ` ORDER by TR.cost ASC,TR.precedence ASC, TK.precedence`;
+                        else
+                            query += ` ORDER by LENGTH (pattern) DESC,TR.cost ASC,TR.precedence ASC, TK.precedence`;
+
+                        let carrierIgnoreDuplicate = {};
+                        let res = this.astppDB.select(query);
+                        res.forEach((r, i) => {
+                            if (!carrierIgnoreDuplicate[r.trunk_id]) {
+                                carrierRates[i] = r;
+                                carrierIgnoreDuplicate[r.trunk_id] = true;
+                            }
+                        });
+                        return carrierRates;
+                    }
+                }
+            }
+        }
+        return [];
+    }
+
+    getAccountBridgeGateway(data, destination) {
+        if (data) {
+            let terminationRates = `ID:${data.outbound_route_id}|CODE:${data.pattern}|DESTINATION:${data.comment}|CONNECTIONCOST:${data.connectcost}|INCLUDEDSECONDS:${data.includedseconds}|COST:${data.cost}|INC:${data.inc}|INITIALBLOCK:${data.init_inc}|TRUNK:${data.trunk_id}|PROVIDER:${data.provider_id}`;
+            let trunkId = data.trunk_id;
+            let providerId = data.provider_id;
+            let absoluteCodecString = data.codec;
+            let gateway = `sofia/gateway/${data.path}/${destination}`;
+            if (data.path1)
+                gateway += `|sofia/gateway/${data.path1}/${destination}`;
+            if (data.path2)
+                gateway += `|sofia/gateway/${data.path1}/${destination}`;
+
+            return {
+                termination_rates: terminationRates,
+                trunk_id: trunkId,
+                provider_id: providerId,
+                codec: absoluteCodecString,
+                gateway
+            }
+        }
+    }
+
+    getCallOutboundGateway(accountId, destinationNumber) {
+        let gateways = [];
+        let carrierRates = this.getAccountCarrierRates(accountId, destinationNumber);
+        let outboundInfo = carrierRates.map(cr => {
+            let bg = this.getAccountBridgeGateway(cr, destinationNumber)
+            gateways.push(bg.gateway);
+        });
+        return gateways.join('|');
+    }
+
     sendFax(from, to, id, files, accountId) {
         from = from.replace(/\D/g, '');
         to = to.replace(/\D/g, '');
         if (this._connected && from && to && id && file) {
-            let recipient = 'server._astpp.callOutboundGateway(to, accountId)';//fix: apply astpp changes
-            recipient = {
-                data: ''
-            };
+            let recipient = this.getCallOutboundGateway(to, accountId);
             if (!recipient.success) return recipient;
 
             let params = [];
@@ -105,7 +206,7 @@ export default class Freeswitch {
         const price = parseInt(transferredPages) * Meteor.settings.pricing.fax;
         const faxOutbound = params.is_send == '1';
 
-        let fax = {};
+        let fax = null;
         if (faxOutbound) {
             let doc = FaxDB.findOne({ faxId: id });
             if (!doc) return {
@@ -128,7 +229,7 @@ export default class Freeswitch {
             fax.flush();
         } else {
             let query = "SELECT account_id FROM accounts WHERE number = ?";
-            let acc = this.databaseConnection.selectOne(query, accountId);
+            let acc = this.astppDB.selectOne(query, accountId);
             fax = new FaxManager(acc ? acc.account_id : null, to, from, 'inbound');
             fax.setTransferredPages(transferredPages);
             fax.setTotalPages(totalPages);
@@ -150,31 +251,38 @@ export default class Freeswitch {
             fax.flush();
         }
 
-        // if (fax) this.astpp.accountCharge(price, fax.account_id); fix: apply astpp changes
+        if (fax) {
+            let queryAcc = "SELECT * FROM accounts WHERE number = ?";
+            let accountData = this.astppDB.selectOne(queryAcc, accountId);
+            server.accountCharge(accountData, price, fax.json.accountId);
 
-        let query = "SELECT fax_url, fax_method, fax_fb_url, fax_fb_method FROM fs_applications fa JOIN dids d ON fa.id = d.fs_app_id WHERE d.number = ? LIMIT 1";
-        let app = this.databaseConnection.selectOne(query, faxOutbound ? from : to);
-        if (!app) return {
-            success: false,
-            data: 'App not found'
-        };
-        const v = {
-            from: fax.from,
-            to: fax.to,
-            fax_id: fax.fax_id,
-            transferred_pages: fax.transferred_pages,
-            total_pages: fax.total_pages,
-            direction: fax.direction,
-            price: fax.price,
-            account_id: fax.account_id,
-            result: fax.result,
-            tiff: fax.tiff,
-        };
+            let query = "SELECT fax_url, fax_method, fax_fb_url, fax_fb_method FROM fs_applications fa JOIN dids d ON fa.id = d.fs_app_id WHERE d.number = ? LIMIT 1";
+            let app = this.astppDB.selectOne(query, faxOutbound ? from : to);
+            if (!app) return {
+                success: false,
+                data: 'App not found'
+            };
+            const v = {
+                from: fax.json.from,
+                to: fax.json.to,
+                fax_id: fax.json.faxId,
+                transferred_pages: fax.json.transferredPages,
+                total_pages: fax.json.totalPages,
+                direction: fax.json.direction,
+                price: fax.json.price,
+                account_id: fax.json.accountId,
+                result: fax.json.result,
+                tiff: fax.json.tiff,
+            };
 
-        this.processRequestUrl(v, app.fax_url, app.fax_method, app.fax_fb_url, app.fax_fb_method, fax.account_id);
+            this.processRequestUrl(v, app.fax_url, app.fax_method, app.fax_fb_url, app.fax_fb_method, fax.json.accountId);
 
+            return {
+                success: true
+            };
+        }
         return {
-            success: true
+            success: false
         };
     }
 

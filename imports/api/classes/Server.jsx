@@ -4,6 +4,8 @@ import Freeswitch from './Freeswitch';
 import MySqlWrapper from './MySqlWrapper';
 import Util from './Utilities';
 import { execSync } from 'child_process';
+import fs from 'fs';
+import moment from 'moment';
 import npmScp from 'scp2';
 import future from 'fibers/future';
 import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
@@ -31,6 +33,46 @@ export default class Server {
         if (conn.connection) {
             this.dbConnection = conn;
         }
+    }
+
+    getAccountBalance(accountData) {
+        let balance = 0;
+        if (accountData)
+            balance = parseFloat(accountData.balance) + parseFloat(accountData.posttoexternal) * parseFloat(accountData.credit_limit);
+
+        return balance;
+    }
+
+    isAccountBillable(accountData, price) {
+        if (this.getAccountBalance(accountData) >= parseFloat(price)) {
+            return true;
+        }
+        return false;
+    }
+
+    updateAccountBalance(accountData, amount, paymentType = 'debit') {
+        if (this.dbConnection && accountData && parseFloat(amount)) {
+            let balance = parseFloat(accountData.balance) - parseFloat(amount);
+            if (paymentType == 'credit')
+                balance = parseFloat(accountData.balance) + parseFloat(amount);
+            return this.dbConnection.update('accounts', { balance }, `id=${accountData.id}`);
+        }
+    }
+
+    chargeAccount(accountData, price) {
+        let result = {
+            success: false,
+            error: 'Insufficient funds to process payment'
+        };
+        if (this.isAccountBillable(accountData, price)) {
+            let charge = this.updateAccountBalance(accountData, price);
+            if (charge) {
+                result.success = true;
+                result.error = '';
+                result.data = 'Payment processed successfully';
+            }
+        }
+        return result;
     }
 
     connectFreeswitch() {
@@ -245,6 +287,28 @@ export default class Server {
             case ENDPOINT.FAX:
                 switch (method) {
                     case METHOD.POST:
+                        let files = [];
+                        if (retval.body.files) {
+                            retval.body.files.forEach(file => {
+                                if (file.fieldname == 'files') {
+                                    let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                    fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                    files.push({
+                                        filename: localpath,
+                                        encoding: file.encoding,
+                                        mime_type: file.mimetype
+                                    });
+                                }
+                            });
+                            retval.body.files = files;
+                        }
+                        if (!retval.body.files || retval.body.files.length == 0) {
+                            retval.code = 400;
+                            retval.error = '`files` is required';
+                            retval.success = false;
+                            return retval;
+                        }
+
                         joiSchema = {
                             to: Joi.number(true),
                             from: Joi.number(true),
@@ -330,6 +394,21 @@ export default class Server {
                     case ENDPOINT_ACTION.SOCIAL_POST: {
                         switch (params.ext) {
                             case ENDPOINT_ACTION.SOCIAL_FB:
+                                if (retval.body.files) {
+                                    retval.body.files.forEach(file => {
+                                        switch (file.fieldname) {
+                                            case 'image':
+                                                let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                                fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                                retval.body[file.fieldname] = {
+                                                    filename: localpath,
+                                                    encoding: file.encoding,
+                                                    mime_type: file.mimetype
+                                                };    
+                                                break;    
+                                        }
+                                    });
+                                }    
                                 joiSchema = {
                                     status: Joi.string(true),
                                     image: Joi.file('image'),
@@ -337,6 +416,23 @@ export default class Server {
                                 };
                                 break;
                             case ENDPOINT_ACTION.SOCIAL_IG:
+                                if (retval.body.files) {
+                                    retval.body.files.forEach(file => {
+                                        switch (file.fieldname) {
+                                            case 'image':
+                                            case 'video':
+                                            case 'cover_photo':
+                                                let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                                fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                                retval.body[file.fieldname] = {
+                                                    filename: localpath,
+                                                    encoding: file.encoding,
+                                                    mime_type: file.mimetype
+                                                };
+                                                break;
+                                        }
+                                    });
+                                }        
                                 joiSchema = {
                                     caption: Joi.string(),
                                     image: Joi.file('image'),
@@ -362,6 +458,21 @@ export default class Server {
                                             desc: Joi.string(false, null, [], [], true)
                                         };
                                     } else if (type == 'pin') {
+                                        if (retval.body.files) {
+                                            retval.body.files.forEach(file => {
+                                                switch (file.fieldname) {
+                                                    case 'image':
+                                                        let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                                        fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                                        retval.body[file.fieldname] = {
+                                                            filename: localpath,
+                                                            encoding: file.encoding,
+                                                            mime_type: file.mimetype
+                                                        };
+                                                        break;
+                                                }
+                                            });
+                                        }   
                                         joiSchema = {
                                             type: Joi.string(true),
                                             board: Joi.string(true),
@@ -382,6 +493,21 @@ export default class Server {
                                 }
                                 break;
                             case ENDPOINT_ACTION.SOCIAL_TW:
+                                if (retval.body.files) {
+                                    retval.body.files.forEach(file => {
+                                        switch (file.fieldname) {
+                                            case 'image':
+                                                let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                                fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                                retval.body[file.fieldname] = {
+                                                    filename: localpath,
+                                                    encoding: file.encoding,
+                                                    mime_type: file.mimetype
+                                                };
+                                                break;
+                                        }
+                                    });
+                                }       
                                 joiSchema = {
                                     status: Joi.string(false, null, [], [], true),
                                     image: Joi.file('image')

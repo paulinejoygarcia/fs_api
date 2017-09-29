@@ -28,46 +28,6 @@ export default class API {
         this.databaseConnection = null;
     }
 
-    getAccountBalance() {
-        let balance = 0;
-        if (this.accountData)
-            balance = parseFloat(this.accountData.balance) + parseFloat(this.accountData.posttoexternal) * parseFloat(this.accountData.credit_limit);
-
-        return balance;
-    }
-
-    isAccountBillable(price) {
-        if (this.getAccountBalance() >= parseFloat(price)) {
-            return true;
-        }
-        return false;
-    }
-
-    updateAccountBalance(amount, paymentType = 'debit') {
-        if (this.accountData && parseFloat(amount)) {
-            let balance = parseFloat(this.accountData.balance) - parseFloat(amount);
-            if (paymentType == 'credit')
-                balance = parseFloat(this.accountData.balance) + parseFloat(amount);
-            return this.databaseConnection.update('accounts', { balance }, `id=${this.accountData.id}`);
-        }
-    }
-
-    chargeAccount(price) {
-        let result = {
-            success: false,
-            error: 'Insufficient funds to process payment'
-        };
-        if (this.isAccountBillable(price)) {
-            let charge = this.updateAccountBalance(price);
-            if (charge) {
-                result.success = true;
-                result.error = '';
-                result.data = 'Payment processed successfully';
-            }
-        }
-        return result;
-    }
-
     setDBConnection(wrapper) {
         if (wrapper && wrapper.isConnected())
             this.databaseConnection = wrapper;
@@ -103,23 +63,19 @@ export default class API {
         return false;
     }
     getAccountBalance() {
-        let balance = 0;
-        if (this.accountData)
-            balance = parseFloat(this.accountData.balance) + parseFloat(this.accountData.posttoexternal) * parseFloat(this.accountData.credit_limit);
-        return balance;
+        return server.getAccountBalance(this.accountData);
     }
 
     isAccountBillable(price) {
-        return (this.getAccountBalance() >= parseFloat(price));
+        return server.isAccountBillable(this.accountData, price);
     }
 
     updateAccountBalance(amount, paymentType = 'debit') {
-        if (this.accountData && parseFloat(amount)) {
-            let balance = parseFloat(this.accountData.balance) - parseFloat(amount);
-            if (paymentType == 'credit')
-                balance = parseFloat(this.accountData.balance) + parseFloat(amount);
-            return this.databaseConnection.update('accounts', { balance }, `id=${this.accountData.id}`);
-        }
+        return server.updateAccountBalance(this.accountData, amount, paymentType);
+    }
+
+    chargeAccount(price) {
+        return server.chargeAccount(this.accountData, price);
     }
 
     didAccountOwner(number) {
@@ -463,24 +419,28 @@ export default class API {
     }
 
     faxSender(to, from, files) {
-        if (!this.freeswitchConnection) {
-            return {
-                success: false,
-                code: 400,
-                error: 'Fax send temporarily unavailable. Please try again later.'
-            };
-        }
-
+        let fax = new FaxManager(this.accountId, to, from, 'outbound', files, price);
         let price = Meteor.settings.pricing.fax || 0.04;
         if (!this.isAccountBillable(price)) {
-            return {
+            let error = {
                 success: false,
                 code: 400,
                 error: 'Insufficient funds to process request'
             };
+            fax.setResult(error);
+            fax.flush();
+            return error;
         }
-
-        let fax = new FaxManager(this.accountId, to, from, 'outbound', [], price);
+        if (!this.freeswitchConnection) {
+            let error = {
+                success: false,
+                code: 400,
+                error: 'Fax send temporarily unavailable. Please try again later.'
+            };
+            fax.setResult(error);
+            fax.flush();
+            return error;
+        }
         fax.flush();
 
         let pdfs = [];
@@ -706,7 +666,7 @@ export default class API {
                 let fbAcc = account.accounts.fb;
                 let fb = new Facebook(fbAcc.accessToken, fbAcc.appId, fbAcc.appSecret, fbAcc.pageId);
                 if (params.image) {
-                    //TODO: post with image
+                    result = fb.postImage(PATH.UPLOAD + params.image.filename, params.status);
                 } else {
                     if (params.link) result = fb.postStatus(params.status, params.link);
                     else result = fb.postStatus(params.status);
@@ -715,9 +675,12 @@ export default class API {
             case ENDPOINT_ACTION.SOCIAL_IG:
                 socialPost.setIG(params.caption, params.image, params.video, params.cover_photo);
                 let igAcc = account.accounts.ig;
-                //TODO: fix Instagram package error
-                //TODO: post with image
-                //TODO: post with video
+                let ig = new Instagram(igAcc.username, igAcc.password);
+                if (params.image) {
+                    result = ig.postImage(PATH.UPLOAD + params.image.filename, params.caption);
+                } else if (params.video && params.cover_photo) {
+                    result = ig.postVideo(PATH.UPLOAD + params.video.filename, params.caption, PATH.UPLOAD + params.cover_photo.filename);
+                }
                 break;
             case ENDPOINT_ACTION.SOCIAL_LI:
                 socialPost.setLI(params.comment, params.title, params.desc, params.url, params.image_url);
@@ -733,7 +696,7 @@ export default class API {
                     result = pi.createBoard(params.name, params.desc);
                 } else if (params.type == 'pin') {
                     socialPost.setPIPin(params.board, params.note, params.link, params.image, params.image_url);
-                    let image = (params.image) ? true : null;// TODO: pin with image
+                    let image = (params.image) ? PATH.UPLOAD + params.image.filename : null;
                     result = pi.createPin(params.board, params.note, params.link, image, params.image_url);
                 }
                 break;
@@ -741,7 +704,7 @@ export default class API {
                 socialPost.setTW(params.status, params.image);
                 let twAcc = account.accounts.tw;
                 let tw = new Twitter(twAcc.consumerKey, twAcc.consumerSecret, twAcc.accessKey, twAcc.accessSecret);
-                let image = (params.image) ? true : null;//TODO: post with image
+                let image = (params.image) ? PATH.UPLOAD + params.image.filename : null;
                 if (image) result = tw.createTweet(params.status, image);
                 else result = tw.createTweet(params.status);
                 break;
