@@ -1,4 +1,3 @@
-
 import PropTypes from 'prop-types';
 import { createContainer } from 'meteor/react-meteor-data';
 import React, { Component } from 'react';
@@ -46,23 +45,27 @@ class Menu extends Component {
             },
         ];
     }
+
     componentDidMount() {
         $(this.list).mCustomScrollbar({ theme: "dark-thick" });
     }
+
     toggleSubMenu(name) {
         if (this.state.selected === name)
             this.setState({ selected: null });
         else
             this.setState({ selected: name });
     }
+
     renderMenuList() {
         return this.menuList.map((item, index) => {
             return (
                 <li key={index}>
                     <a href="#" className="submenu-toggle" onClick={(event) => {
-                        item.route ? this.props.history.replace(item.route) : this.toggleSubMenu(item.name); event.preventDefault()
+                        item.route ? this.props.history.replace(item.route) : this.toggleSubMenu(item.name);
+                        event.preventDefault()
                     }}>
-                        <i className={`menu-icon zmdi zmdi-hc-lg ${item.icon}`} />
+                        <i className={`menu-icon zmdi zmdi-hc-lg ${item.icon}`}/>
                         <span className="menu-text">{item.name}</span>
                         {
                             item.subList.length > 0 ?
@@ -77,7 +80,10 @@ class Menu extends Component {
                             item.subList.map((subItem, index) => {
                                 return (
                                     <li key={index}>
-                                        <a href="#" onClick={(event) => { subItem.route ? this.props.history.replace(subItem.route) : null; event.preventDefault() }}
+                                        <a href="#" onClick={(event) => {
+                                            subItem.route ? this.props.history.replace(subItem.route) : null;
+                                            event.preventDefault()
+                                        }}
                                         >{subItem.name}
                                         </a>
                                     </li>
@@ -89,33 +95,38 @@ class Menu extends Component {
             );
         });
     }
+
     render() {
         return (
             <aside className="site-menubar">
                 <div className="site-user">
                     <div className="media align-items-center">
                         <a href="javascript:void(0)">
-                            {/*<img className="avatar avatar-circle" src="/img/person.PNG" alt="avatar" />*/}
-                            <img className="avatar avatar-circle" src={(this.props.user && this.props.user.profile.avatar)?Avatar.link(this.props.user.profile.avatar,'thumbnail'):"img/default.png"} alt="avatar" />
+                            <img className="avatar avatar-circle"
+                                 src={(this.props.user && this.props.user.profile.avatar) ? this.props.user.profile.avatar : "img/default.png"}
+                                 alt="avatar"/>
                         </a>
                         <div className="media-body hidden-fold">
                             <h6 className="mborder-a-0">
-                                <a href="javascript:void(0)" className="username">{this.props.user?this.props.user.profile.first + " " + this.props.user.profile.last:""}</a>
+                                <a href="javascript:void(0)"
+                                   className="username">{this.props.user ? this.props.user.profile.first + " " + this.props.user.profile.last : ""}</a>
                             </h6>
                         </div>
                     </div>
                 </div>
-                <div className="menu-container" ref={instance => { this.list = instance; }}>
+                <div className="menu-container" ref={instance => {
+                    this.list = instance;
+                }}>
                     <div className="site-menubar-inner">
                         <ul className="site-menu">
                             {this.renderMenuList()}
                             <li>
                                 <a href="#" onClick={() => {
-                                    Meteor.logout((err,data)=>{
-                                        console.log("err",err,data);
+                                    Meteor.logout((err, data) => {
+                                        console.log("err", err, data);
                                     });
                                 }}>
-                                    <i className="menu-icon zmdi zmdi-hc-lg zmdi-lock-outline" />
+                                    <i className="menu-icon zmdi zmdi-hc-lg zmdi-lock-outline"/>
                                     <span className="menu-text">Logout</span>
                                 </a>
                             </li>

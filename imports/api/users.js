@@ -1,24 +1,25 @@
 import { Meteor } from 'meteor/meteor';
 import { Accounts } from 'meteor/accounts-base';
 import ASTPPCustomer from './classes/ASTPPCustomer.jsx';
+
 export const UsersProfile = 'users_profile';
 export const UsersSave = 'users_save';
 export const UsersSavePassword = 'users_save_password';
 export const UsersRegister = 'users_register';
 if (Meteor.isServer) {
-    functions[UsersProfile] = function(fileObj){
-        Meteor.users.update({_id:this.userId},{$set:{"profile.avatar":fileObj}});
+    functions[UsersProfile] = function (photo) {
+        Meteor.users.update({ _id: this.userId }, { $set: { "profile.avatar": photo } });
     };
-    functions[UsersSave] = function(first,last){
-        return Meteor.users.update({_id:Meteor.userId()},{$set:{"profile.first":first,"profile.last":last}})
+    functions[UsersSave] = function (first, last) {
+        return Meteor.users.update({ _id: Meteor.userId() }, { $set: { "profile.first": first, "profile.last": last } })
     };
-    functions[UsersSavePassword] = function(newPassword){
+    functions[UsersSavePassword] = function (newPassword) {
         return Accounts.setPassword(Meteor.userId(), newPassword);
     };
-    functions[UsersRegister] = function(data){
+    functions[UsersRegister] = function (data) {
         let user = {};
-        user.emails = [{address:data.email,verified:true}];
-        user.profile = {first:data.first,last:data.last};
+        user.emails = [{ address: data.email, verified: true }];
+        user.profile = { first: data.first, last: data.last };
         user.email = data.email;
         user.password = data.password;
         let id = Accounts.createUser(user);
@@ -35,13 +36,13 @@ if (Meteor.isServer) {
         customer.setPassword(data.password);
         customer.setEntityName();
         let addedCustomer = customer.customerAdd();
-        if(!addedCustomer)
-            throw new Meteor.Error("500","Problem on saving ASTPP account");
-        Meteor.users.update({_id:id},{$set:{"profile.astpp":addedCustomer}});
+        if (!addedCustomer)
+            throw new Meteor.Error("500", "Problem on saving ASTPP account");
+        Meteor.users.update({ _id: id }, { $set: { "profile.astpp": addedCustomer } });
         return addedCustomer;
     };
-    Accounts.validateLoginAttempt((data)=>{
-        if(data.error)
+    Accounts.validateLoginAttempt((data) => {
+        if (data.error)
             return data.error;
         else
             return true;
