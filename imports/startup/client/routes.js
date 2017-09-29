@@ -6,7 +6,6 @@ import createBrowserHistory from 'history/createBrowserHistory';
 import Main from '../../ui/components/Main';
 import ApiDoc from '../../ui/components/api/doc';
 import NotFound from '../../ui/NotFound';
-import Reports from '../../ui/Reports.jsx';
 
 const customHistory = createBrowserHistory();
 const unauthenticatedPages = ['/login', '/register'];

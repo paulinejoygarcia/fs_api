@@ -1,11 +1,14 @@
 import { Meteor } from 'meteor/meteor';
 import { Accounts } from 'meteor/accounts-base';
 import ASTPPCustomer from './classes/ASTPPCustomer.jsx';
-
+export const UsersProfile = 'users_profile';
 export const UsersSave = 'users_save';
 export const UsersSavePassword = 'users_save_password';
 export const UsersRegister = 'users_register';
 if (Meteor.isServer) {
+    functions[UsersProfile] = function(fileObj){
+        Meteor.users.update({_id:this.userId},{$set:{"profile.avatar":fileObj}});
+    };
     functions[UsersSave] = function(first,last){
         return Meteor.users.update({_id:Meteor.userId()},{$set:{"profile.first":first,"profile.last":last}})
     };
@@ -32,8 +35,9 @@ if (Meteor.isServer) {
         customer.setPassword(data.password);
         customer.setEntityName();
         let addedCustomer = customer.customerAdd();
-        //if(!addedCustomer)
-            //throw new Meteor.Error("500","Problem on saving ASTPP account");
+        if(!addedCustomer)
+            throw new Meteor.Error("500","Problem on saving ASTPP account");
+        Meteor.users.update({_id:id},{$set:{"profile.astpp":addedCustomer}});
         return addedCustomer;
     };
     Accounts.validateLoginAttempt((data)=>{

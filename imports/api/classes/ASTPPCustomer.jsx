@@ -151,8 +151,6 @@ export default class ASTPPCustomer {
         return to;
     }
     customerAdd(){
-        //TODO GET credit_limit
-        //let enc = new Enc(Meteor.settings.astpp.privatekey);
         this.creditLimit = this.addCalculateCurrency(this.creditLimit, '', '', false, false);
         let api = this.randomStr(20);
         let accountId = Math.floor(Math.pow(10, 12-1) + Math.random() * 9 * Math.pow(10, 12-1));
@@ -172,27 +170,15 @@ export default class ASTPPCustomer {
             secret: new Buffer(this.XoR(api, accountId)).toString('base64'),
             pin: this.json.pin,
         };
+        let invoiceConfig = null;
         data['reseller_id'] = this.json.type === 1? this.json.id : 0;
         data['maxchannels'] = (this.json.type === 1 || this.json.type === 2 || this.json.type === -1) ? "0" : this.json.maxChannels;
         delete data['action'];
-        let sipFlag = this.json.sipDeviceFlag? 1 : 0;
-        let opensipFlag = this.json.opensipsDeviceFlag? 1 : 0;
         delete data['sip_device_flag'];
         delete data['opensips_device_flag'];
         delete data['tax_id'];
-        /*         * ******************************** */
         data['creation'] = moment().format('YYYY-MM-DD hh:mm:ss');
         data['expiry'] = moment().add(20,'years').format('YYYY-MM-DD hh:mm:ss');
-        /*if(isset($accountinfo['is_recording'])){
-         $accountinfo['is_recording']=0;
-         }else{
-         $accountinfo['is_recording']=1;
-         }
-         if(isset($accountinfo['allow_ip_management'])){
-         $accountinfo['allow_ip_management']=0;
-         }else{
-         $accountinfo['allow_ip_management']=1;
-         }*/
         if(data['local_call'])
             data['local_call']=0;
         else
@@ -207,54 +193,12 @@ export default class ASTPPCustomer {
         let accId = (lastRecord) ? (lastRecord.id * 1 + 1) : "0000";
         data.id = accId;
         let lastId = this.json.dbConnection.insert('accounts', data);
-
-        /**
-         ASTPP  3.0
-         For Invoice Configuration
-         * */
-        let countryName = "";
-        let invoiceConfig = null;
         if (this.json.type === 1 && invoiceConfig && invoiceConfig === "0") {
-            if (this.json.countryId === NULL)
-                this.json.countryId = "";
-            else {
-                let countryCodes = this.json.dbConnection.select("SELECT country FROM countrycode WHERE id = ?",[countryId]);
-                countryName = countryCodes[0];
-            }
             if (this.json.postalCode === NULL)
                 this.json.postalCode = "";
             invoiceConfig = [{'accountid':lastId,'company_name':"", 'address':"", 'city':"", 'province':"", 'country':"", 'zipcode':"", 'telephone':"", 'emailaddress':this.json.email}];
             this.json.dbConnection.insert('invoice_conf',invoiceConfig);
         }
-        if (sipFlag === '1') {
-            // this.json.dbConnection.select("SELECT * FROM ");
-            // $this->db->select('id');
-            // $this->db->where('name','default');
-            // $sipprofile_result=(array)$this->db->get('sip_profiles')->first_row();
-            // $free_switch_array = array('fs_username' => $accountinfo['number'],
-            //     'fs_password' => $this->common->decode($accountinfo['password']),
-            //     'context' => 'default',
-            //     'effective_caller_id_name' => $accountinfo['number'],
-            //     'effective_caller_id_number' => $accountinfo['number'],
-            //     'sip_profile_id' => $sipprofile_result['id'],
-            //     'pricelist_id' => $accountinfo['pricelist_id'],
-            //     'accountcode' => $last_id,
-            //     'status' => $accountinfo['status']);
-            // $this->load->model('freeswitch/freeswitch_model');
-            // $this->freeswitch_model->add_freeswith($free_switch_array);
-        }
-        if (opensipFlag === 1) {
-            // $opensips_array = array('username' => $accountinfo['number'],
-            //     'domain' => common_model::$global_config['system_config']['opensips_domain'],
-            //     'password' => $accountinfo['password'],
-            //     'accountcode' => $accountinfo['number'],
-            //     'pricelist_id' => $accountinfo['pricelist_id']);
-            // $this->load->model('opensips/opensips_model');
-            // $this->opensips_model->add_opensipsdevices($opensips_array);
-        }
-
-        //$this->common->mail_to_users('email_add_user', $accountinfo);
-
-        return lastId;
+        return (lastId === 0 || lastId)?accountId:false;
     }
 }

@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { createContainer } from 'meteor/react-meteor-data';
 import React, { Component } from 'react';
 import { ROUTE_COMPONENT } from '../../api/classes/Const';
+import { Avatar } from '../../api/files';
 import { Meteor } from 'meteor/meteor';
 
 class Menu extends Component {
@@ -36,6 +37,12 @@ class Menu extends Component {
                         name: 'Invoices', route: ROUTE_COMPONENT.ACCOUNT.INVOICE
                     }
                 ]
+            },
+            {
+                name: 'Reports',
+                route: ROUTE_COMPONENT.REPORTS,
+                icon: 'zmdi-file-text',
+                subList: []
             },
         ];
     }
@@ -89,7 +96,7 @@ class Menu extends Component {
                     <div className="media align-items-center">
                         <a href="javascript:void(0)">
                             {/*<img className="avatar avatar-circle" src="/img/person.PNG" alt="avatar" />*/}
-                            <img className="avatar avatar-circle" src={(this.props.user && this.props.user.profile.avatar)?"/img/"+this.props.user.profile.avatar:"/img/default.png"} alt="avatar" />
+                            <img className="avatar avatar-circle" src={(this.props.user && this.props.user.profile.avatar)?Avatar.link(this.props.user.profile.avatar,'thumbnail'):"img/default.png"} alt="avatar" />
                         </a>
                         <div className="media-body hidden-fold">
                             <h6 className="mborder-a-0">
