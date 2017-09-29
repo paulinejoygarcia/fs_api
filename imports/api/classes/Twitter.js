@@ -30,7 +30,9 @@ export default class Twitter {
             } else {
                 fut.return({
                     success: true,
-                    data: tweet.id_str
+                    data: {
+                        id: tweet.id_str
+                    }
                 });
             }
         });

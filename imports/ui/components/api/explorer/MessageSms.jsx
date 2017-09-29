@@ -16,14 +16,14 @@ class MessageSms extends Component {
     submit() {
         switch (this.props.action) {
             case ACTION.get:
-                this.lib.getSms(this.state.id, data => this.setState({ response: data }));
+                this.lib.getSms(this.state.id, data => this.setState({ response: data, isProcessing: false }));
                 break;
             case ACTION.send:
                 let params = {
                     ...this.json,
                     ...this.state
                 };
-                this.lib.sendSms(params, data => this.setState({ response: data }));
+                this.lib.sendSms(params, data => this.setState({ response: data, isProcessing: false }));
                 break;
         }
     }

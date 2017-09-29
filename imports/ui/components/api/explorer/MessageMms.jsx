@@ -16,14 +16,14 @@ class MessageMms extends Component {
     submit() {
         switch (this.props.action) {
             case ACTION.get:
-                this.lib.getMms(this.state.id, data => this.setState({ response: data }));
+                this.lib.getMms(this.state.id, data => this.setState({ response: data, isProcessing: false }));
                 break;
             case ACTION.send:
                 let params = {
                     ...this.json,
                     ...this.state
                 };
-                this.lib.sendMms(params, data => this.setState({ response: data }));
+                this.lib.sendMms(params, data => this.setState({ response: data, isProcessing: false }));
                 break;
         }
     }
@@ -44,6 +44,7 @@ class MessageMms extends Component {
             {
                 name: 'attachment',
                 label: 'Attachment',
+                accept: 'image/*,audio/*,video/*',
                 required: true
             }
         ];

@@ -57,14 +57,15 @@ class SocialPost extends Component {
                 break;
         }
         if (type) {
-            this.lib.addSocialPost(type, params, data => this.setState({ response: data }));
+            this.lib.addSocialPost(type, params, data => this.setState({ response: data, isProcessing: false }));
         }
     }
     renderFB() {
         let fileInputs = [
             {
                 name: 'image',
-                label: 'Image'
+                label: 'Image',
+                accept: 'image/*'
             }
         ];
         return (
@@ -82,15 +83,18 @@ class SocialPost extends Component {
         let fileInputs = [
             {
                 name: 'image',
-                label: 'Image'
+                label: 'Image',
+                accept: 'image/*'
             },
             {
                 name: 'video',
-                label: 'Video'
+                label: 'Video',
+                accept: 'video/*'
             },
             {
                 name: 'cover_photo',
-                label: 'Video Cover Photo'
+                label: 'Video Cover Photo',
+                accept: 'image/*'
             }
         ];
         return (
@@ -132,7 +136,8 @@ class SocialPost extends Component {
         let fileInputs = [
             {
                 name: 'image',
-                label: 'Image'
+                label: 'Image',
+                accept: 'image/*'
             }
         ];
         return (
@@ -150,7 +155,8 @@ class SocialPost extends Component {
         let fileInputs = [
             {
                 name: 'image',
-                label: 'Image'
+                label: 'Image',
+                accept: 'image/*'
             }
         ];
         return (

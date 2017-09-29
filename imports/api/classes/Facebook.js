@@ -63,10 +63,18 @@ export default class Facebook {
     postComment(postId, comment) {
         let fut = new npmFuture();
         npmFB.api(`${postId}/comments`, 'post', { message: comment }, function (res) {
-            fut.return({
-                success: true,
-                data: res
-            });
+            if (res && res.id) {
+                fut.return({
+                    success: true,
+                    data: res
+                });
+            } else {
+                fut.return({
+                    success: false,
+                    data: res && res.error ? res.error : res
+                });
+            }
+
         });
         return fut.wait();
     }

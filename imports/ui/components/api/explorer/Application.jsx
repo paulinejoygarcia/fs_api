@@ -17,13 +17,13 @@ class Application extends Component {
     submit() {
         switch (this.props.action) {
             case ACTION.get:
-                this.lib.getApp(this.state.id, data => this.setState({ response: data }));
+                this.lib.getApp(this.state.id, data => this.setState({ response: data, isProcessing: false }));
                 break;
             case ACTION.add:
-                this.lib.createApp(this.json, data => this.setState({ response: data }));
+                this.lib.createApp(this.json, data => this.setState({ response: data, isProcessing: false }));
                 break;
             case ACTION.update:
-                this.lib.updateApp(this.state.id, this.json, data => this.setState({ response: data }));
+                this.lib.updateApp(this.state.id, this.json, data => this.setState({ response: data, isProcessing: false }));
                 break;
         }
     }

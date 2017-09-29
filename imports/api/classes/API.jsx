@@ -588,7 +588,7 @@ export default class API {
 
         let postId = params.post_id;
         let comment = params.comment;
-        let socialComment = new SocialCommentManager(this.accountId, site, postId, comment, price);
+        let socialComment = new SocialCommentManager(this.accountId, site, postId, comment);
         socialComment.flush();
 
         let result = null;
@@ -610,7 +610,9 @@ export default class API {
                 break;
         }
 
+        let error = 'Social comment could not be posted';
         if (result) {
+            socialPost.setPrice(price);
             socialComment.setResult(result);
             socialComment.flush();
             if (result.success) {
@@ -618,15 +620,20 @@ export default class API {
                 return {
                     success: charge.success,
                     code: 200,
-                    data: charge.success ? 'Social comment posted successfully' : charge.error
+                    data: {
+                        _info: charge.success ? 'Social comment posted successfully' : charge.error,
+                        ...result.data
+                    }
                 };
+            } else {
+                error = result.data
             }
         }
 
         return {
             success: false,
             code: 200,
-            data: 'Social comment could not be posted'
+            data: error
         };
     }
 
@@ -650,7 +657,7 @@ export default class API {
         }
 
         let result = null;
-        let socialPost = new SocialPostManager(this.accountId, site, null, price);
+        let socialPost = new SocialPostManager(this.accountId, site);
 
         switch (site) {
             case ENDPOINT_ACTION.SOCIAL_FB:
@@ -702,7 +709,9 @@ export default class API {
                 break;
         }
 
+        let error = 'Social post could not be processed';
         if (result) {
+            socialPost.setPrice(price);
             socialPost.setResult(result);
             socialPost.flush();
             if (result.success) {
@@ -710,15 +719,20 @@ export default class API {
                 return {
                     success: charge.success,
                     code: 200,
-                    data: charge.success ? 'Social posted processed successfully' : charge.error
+                    data: {
+                        _info: charge.success ? 'Social post processed successfully' : charge.error,
+                        ...result.data
+                    }
                 };
+            } else {
+                error = result.data
             }
         }
 
         return {
             success: false,
             code: 200,
-            data: 'Social post could not be processed'
+            data: error
         };
     }
 }

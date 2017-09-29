@@ -22,6 +22,9 @@ export default class SocialCommentManager {
             ...json
         };
     }
+    setPrice(price) {
+        this.json.price = parseFloat(price) || 0;
+    }
     setResult(result) {
         this.json.result = result;
     }

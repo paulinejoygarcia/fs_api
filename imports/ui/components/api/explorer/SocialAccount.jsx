@@ -36,7 +36,7 @@ class SocialAccount extends Component {
                 break;
         }
         if (type) {
-            this.lib.saveSocialAccount(type, this.json, data => this.setState({ response: data }));
+            this.lib.saveSocialAccount(type, this.json, data => this.setState({ response: data, isProcessing: false }));
         }
     }
     renderAddSocialAccountFB() {

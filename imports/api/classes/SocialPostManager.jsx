@@ -78,6 +78,9 @@ export default class SocialPostManager {
 
         this.isSet = true;
     }
+    setPrice(price) {
+        this.json.price = parseFloat(price) || 0;
+    }
     setResult(result) {
         this.json.result = result;
     }

@@ -16,14 +16,14 @@ class Fax extends Component {
     submit() {
         switch (this.props.action) {
             case ACTION.get:
-                this.lib.getFax(this.state.id, data => this.setState({ response: data }));
+                this.lib.getFax(this.state.id, data => this.setState({ response: data, isProcessing: false }));
                 break;
             case ACTION.send:
                 let params = {
                     ...this.json,
                     ...this.state
                 };
-                this.lib.sendFax(params, data => this.setState({ response: data }));
+                this.lib.sendFax(params, data => this.setState({ response: data, isProcessing: false }));
                 break;
         }
     }
@@ -44,6 +44,7 @@ class Fax extends Component {
             {
                 name: 'files',
                 label: 'PDF Files',
+                accept: '.pdf',
                 multiple: true,
                 required: true
             }

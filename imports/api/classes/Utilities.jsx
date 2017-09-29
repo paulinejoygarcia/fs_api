@@ -17,19 +17,24 @@ class Utilities {
             return new Buffer(ciphertxt, 'base64').toString();
         return ciphertxt;
     }
-    encodeBase64(plaintxt) {
+    encodeBase64(input, type) {
         if (Meteor.isClient)
-            return btoa(plaintxt);
+            return btoa(input);
         if (Meteor.isServer) {
-            return new Buffer(plaintxt).toString('base64');
+            switch (type) {
+                case 'file':
+                    return fs.readFileSync(input).toString('base64');
+                    break;
+            }
+            return new Buffer(input).toString('base64');
         }
-        return plaintxt
+        return input
     }
     encodeImageFileAsURL(element, callback) {
         let file = element.currentTarget.files[0];
         let reader = new FileReader();
-        reader.onloadend = function() {
-            if(callback)
+        reader.onloadend = function () {
+            if (callback)
                 callback.call(this, reader.result);
         };
         reader.readAsDataURL(file);
@@ -356,18 +361,18 @@ class Utilities {
     }
 
 
-	showGritter(title, text, status) {
-	    if (Meteor.isClient) {
-	        $.gritter.add({
-	            title: title,
-	            text: text,
-	            class_name: status,
-	            time: 10000,
-	        });
-	        return;
-	    }
+    showGritter(title, text, status) {
+        if (Meteor.isClient) {
+            $.gritter.add({
+                title: title,
+                text: text,
+                class_name: status,
+                time: 10000,
+            });
+            return;
+        }
     }
-    
+
     tryParseJSON(jsonString) {
         try {
             var o = JSON.parse(jsonString);

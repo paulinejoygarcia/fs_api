@@ -14,7 +14,8 @@ class RequestManager extends Component {
         this.state = {
             json: '',
             response: {},
-            error: null
+            error: null,
+            isProcessing: false
         };
 
         this.submit = this.submit.bind(this);
@@ -29,8 +30,9 @@ class RequestManager extends Component {
     }
     submit(e) {
         e.preventDefault();
-        
+
         const that = this;
+        this.setState({ isProcessing: true, response: {} });
         if (this.props.credentials) {
             this.lib = new APILibrary(this.props.credentials.apiKey, this.props.credentials.apiSecret, this.props.credentials.accountId, true);
             this.lib.setAccessCode(this.props.credentials.accessCode);
@@ -64,31 +66,6 @@ class RequestManager extends Component {
             this.setState({ error: 'No API Credentials found.' });
         }
     }
-    submit1(e) {
-        e.preventDefault();
-
-        const that = this;
-        if (this.props.accountId && this.props.apiKey && this.props.apiSecret && this.props.access_code) {
-            this.lib = new APILibrary(this.props.apiKey, this.props.apiSecret, this.props.accountId, true);
-            this.lib.setAccessCode(this.props.access_code);
-            this.json = Util.tryParseJSON(this.state.json);
-
-            if (this.props.idRequired && !this.json) {
-                this.setState({ error: 'ID is required' });
-                return;
-            }
-
-            if (this.props.jsonRequired && !this.json) {
-                this.setState({ error: 'Invalid JSON' });
-                return;
-            }
-
-            this.props.submit.call(this);
-            this.setState({ error: '' });
-        } else {
-            this.setState({ error: 'Please provide your API Credentials' });
-        }
-    }
     renderForm() {
         let fileInputs = [];
         if (this.props.files) {
@@ -96,7 +73,7 @@ class RequestManager extends Component {
                 fileInputs.push(
                     <div key={i} className="form-group">
                         <label>{file.label}</label>
-                        <input name={file.name} onChange={this.fileChanged} multiple={file.multiple} type="file" className="form-control-file input-sm" />
+                        <input name={file.name} onChange={this.fileChanged} accept={file.accept || '*'} multiple={file.multiple} type="file" className="form-control-file input-sm" />
                     </div>
                 );
             });
@@ -124,22 +101,13 @@ class RequestManager extends Component {
                                     <textarea name="json" value={this.state.json} onChange={this.inputChanged} className="form-control" placeholder="Enter valid JSON Object"></textarea>
                                 </div>
                             }
-                            <button type="submit" className="btn btn-primary">Try it now</button>
+                            <button type="submit" className="btn btn-primary" disabled={this.state.isProcessing}>Try it now</button>
                         </div>
                     </div>
                 </form>
             </div>
         );
     }
-    // componentWillReceiveProps(nextProps) {
-    //     if (nextProps.files) {
-    //         this.setState({files: nextProps.files})
-    //         nextProps.forEach(file => {
-    //             this.setState({ [file]:  });
-    //             fileInputs.push(<input name={file.name} value={this.state[name]} onChange={this.inputChanged} type="text" className="form-control input-sm" placeholder="Enter record ID" />)
-    //         });
-    //     }
-    // }
     render() {
         return (
             <div className="row">

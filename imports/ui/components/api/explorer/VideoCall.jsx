@@ -14,7 +14,7 @@ class VideoCall extends Component {
     submit() {
         switch (this.props.action) {
             case ACTION.get:
-                this.lib.getVideoCall(this.state.id, data => this.setState({ response: data }));
+                this.lib.getVideoCall(this.state.id, data => this.setState({ response: data, isProcessing: false }));
                 break;
         }
     }

@@ -11,20 +11,20 @@ export default class Pinterest {
         self.username = username;
         self.accessToken = accessToken;
     }
-    
+
     generateAccessToken(authorizationCode) {
-        let res = Util.httpRequest(apiUrl + 'oauth/token', 'POST', 
+        let res = Util.httpRequest(apiUrl + 'oauth/token', 'POST',
             {
                 grant_type: 'authorization_code',
                 client_id: this.clientId,
                 client_secret: this.clientSecret,
                 code: authorizationCode
-            }, null, 
+            }, null,
             {
                 'Content-Type': contentType
             });
-        
-        if(res.statusCode == 200) {
+
+        if (res.statusCode == 200) {
             let data = JSON.parse(res.data);
             this.accessToken = data.access_token;
             return {
@@ -32,15 +32,15 @@ export default class Pinterest {
                 data: data
             };
         }
-        
+
         return {
             success: false,
             data: 'Unable to generate access token'
         };
     }
-    
+
     createBoard(name, desc) {
-        let res = Util.httpRequest(apiUrl + 'boards/?access_token=' + this.accessToken, 'POST',  
+        let res = Util.httpRequest(apiUrl + 'boards/?access_token=' + this.accessToken, 'POST',
             {
                 name: name,
                 description: desc,
@@ -48,51 +48,51 @@ export default class Pinterest {
             {
                 'Content-Type': contentType,
             });
-        
-        if(res.statusCode == 200) {
+
+        if (res.statusCode == 200) {
             const data = JSON.parse(res.data).data;
-            if(data.id) {
+            if (data.id) {
                 return {
                     success: true,
                     data: data
                 };
             }
         }
-        
+
         return {
             success: false,
             data: 'Unable to create board'
         };
     }
-    
+
     createPin(board, note, link, imageFile, imageUrl) {
         let params = {
             board: this.username + '/' + board,
             note: note,
         };
-        if(link) params.link = link;
-        if (imageFile) params.image_base64 = Util.encodeBase64(imageFile);
-        if(imageUrl) params.image_url = imageUrl;
-        
-        let res = Util.httpRequest(apiUrl + 'pins/?access_token=' + this.accessToken, 'POST',  
+        if (link) params.link = link;
+        if (imageFile) params.image_base64 = Util.encodeBase64(imageFile, 'file');
+        if (imageUrl) params.image_url = imageUrl;
+
+        let res = Util.httpRequest(apiUrl + 'pins/?access_token=' + this.accessToken, 'POST',
             params, null,
             {
                 'Content-Type': contentType,
             });
-        
-        if(res.statusCode == 200) {
+
+        if (res.statusCode == 200) {
             const data = JSON.parse(res.data).data;
-            if(data.id) {
+            if (data.id) {
                 return {
                     success: true,
                     data: data
                 };
             }
         }
-        
+
         return {
             success: false,
-            data: 'Unable to create pin'
+            data: (res && res.data) ? res.data : 'Unable to create pin'
         };
     }
 }

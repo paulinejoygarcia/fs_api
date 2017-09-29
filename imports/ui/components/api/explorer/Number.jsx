@@ -16,13 +16,13 @@ class Number extends Component {
     submit() {
         switch (this.props.action) {
             case ACTION.available:
-                this.lib.getNumberAvailable(data => this.setState({ response: data }));
+                this.lib.getNumberAvailable(data => this.setState({ response: data, isProcessing: false }));
                 break;
             case ACTION.owned:
-                this.lib.getNumberOwned(data => this.setState({ response: data }));
+                this.lib.getNumberOwned(data => this.setState({ response: data, isProcessing: false }));
                 break;
             case ACTION.incoming:
-                this.lib.purchaseNumber(this.json, data => this.setState({ response: data }));
+                this.lib.purchaseNumber(this.json, data => this.setState({ response: data, isProcessing: false }));
                 break;
         }
     }

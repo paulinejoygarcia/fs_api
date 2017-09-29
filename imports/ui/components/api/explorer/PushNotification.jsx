@@ -16,14 +16,14 @@ class PushNotification extends Component {
     submit() {
         switch (this.props.action) {
             case ACTION.get:
-                this.lib.getPushNotification(this.state.id, data => this.setState({ response: data }));
+                this.lib.getPushNotification(this.state.id, data => this.setState({ response: data, isProcessing: false }));
                 break;
             case ACTION.send:
                 let params = {
                     ...this.json,
                     ...this.state
                 };
-                this.lib.sendPushNotification(params, data => this.setState({ response: data }));
+                this.lib.sendPushNotification(params, data => this.setState({ response: data, isProcessing: false }));
                 break;
         }
     }

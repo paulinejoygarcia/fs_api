@@ -19,7 +19,7 @@ class VideoScreenshot extends Component {
                     ...this.json,
                     ...this.state
                 };
-                this.lib.sendMms(params, data => this.setState({ response: data }));
+                this.lib.sendMms(params, data => this.setState({ response: data, isProcessing: false }));
                 break;
         }
     }
@@ -28,6 +28,7 @@ class VideoScreenshot extends Component {
             {
                 name: 'attachment',
                 label: 'Attachment',
+                accept: 'image/*',
                 required: true
             }
         ];

@@ -28,7 +28,7 @@ class SocialComment extends Component {
                 break;
         }
         if (type) {
-            this.lib.addSocialComment(type, this.json, data => this.setState({ response: data }));
+            this.lib.addSocialComment(type, this.json, data => this.setState({ response: data, isProcessing: false }));
         }
     }
     renderFB() {
