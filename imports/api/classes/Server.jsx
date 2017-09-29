@@ -283,6 +283,7 @@ export default class Server {
                         }
                         break;
                 }
+                break;
 
             case ENDPOINT.FAX:
                 switch (method) {

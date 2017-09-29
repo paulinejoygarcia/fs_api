@@ -8,7 +8,6 @@ import Header from '../Header';
 import Menu from '../Menu';
 import Section from './Section';
 import '../../../stylesheets/main.scss';
-import '../../../stylesheets/api-docs.css';
 
 class Main extends Component {
     constructor(props) {
@@ -16,8 +15,8 @@ class Main extends Component {
 
         this.menuList = [
             {
-                name: 'Using the API',
-                route: '/docs/api/rest/',
+                name: 'Using the API Explorer',
+                route: '/tools/api-explorer/',
                 icon: 'zmdi-forward',
             },
             ...ROUTE_API_MENU,
@@ -25,8 +24,8 @@ class Main extends Component {
                 separator: true
             },
             {
-                name: 'API Explorer',
-                route: '/tools/api-explorer',
+                name: 'API Docs',
+                route: '/docs/api/rest',
                 icon: 'zmdi-mail-send',
             },
         ];
@@ -37,7 +36,7 @@ class Main extends Component {
                 <Header />
                 <div className="site-wrapper">
                     <Menu history={this.props.history} list={this.menuList} />
-                    <Section route={this.props.match.params.section} />
+                    <Section credentials={this.props.credentials} route={this.props.match.params.section} />
                 </div>
             </div>
         );
@@ -49,6 +48,6 @@ Main.propTypes = {
 
 export default createContainer((props) => {
     return {
-        user: Meteor.user()
+        credentials: Session.get('API_CREDENTIALS')
     };
 }, Main);

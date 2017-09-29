@@ -311,6 +311,7 @@ export default class API {
                         return this.numberIncoming(body.did_id, body.app_id);
                 }
                 break;
+
             case ENDPOINT.SOCIAL:
                 switch (this.subEndpoint) {
                     case ENDPOINT_ACTION.SOCIAL_ACCOUNT:
@@ -321,16 +322,6 @@ export default class API {
                         return this.socialPost(this.extEndpoint, body);
                 }
                 break;
-
-            case ENDPOINT.MESSAGE:
-            case ENDPOINT.PUSH:
-            case ENDPOINT.VIDEO:
-            case ENDPOINT.VOICE:
-                return {
-                    success: true,
-                    code: 200,
-                    data: 'success'
-                };
 
             case ENDPOINT.MESSAGE:
                 switch (method) {
@@ -364,6 +355,7 @@ export default class API {
                         };
                 }
                 break;
+
             case ENDPOINT.VIDEO:
                 switch (method) {
                     case METHOD.POST:

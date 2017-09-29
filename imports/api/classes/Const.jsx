@@ -39,6 +39,90 @@ export const ROUTE_API_DOC = {
     EXPLORER: 'explorer',
 };
 
+export const ROUTE_API_MENU = [
+    {
+        name: 'Application',
+        route: ROUTE_API_DOC.APPLICATION,
+        icon: 'zmdi-font',
+    },
+    {
+        name: 'Fax',
+        route: ROUTE_API_DOC.FAX,
+        icon: 'zmdi-print',
+    },
+    {
+        name: 'Message',
+        route: null,
+        icon: 'zmdi-email',
+        subList: [
+            {
+                name: 'SMS',
+                route: ROUTE_API_DOC.MESSAGE.SMS,
+                icon: 'zmdi-comment-alt',
+            },
+            {
+                name: 'MMS',
+                route: ROUTE_API_DOC.MESSAGE.MMS,
+                icon: 'zmdi-image',
+            }
+        ]
+    },
+    {
+        name: 'Number',
+        route: ROUTE_API_DOC.NUMBER,
+        icon: 'zmdi-smartphone-iphone',
+    },
+    {
+        name: 'Push Notification',
+        route: ROUTE_API_DOC.PUSH,
+        icon: 'zmdi-notifications',
+    },
+    {
+        name: 'Social',
+        route: null,
+        icon: 'zmdi-share',
+        subList: [
+            {
+                name: 'Account',
+                route: ROUTE_API_DOC.SOCIAL.ACCOUNT,
+                icon: 'zmdi-account-circle',
+            },
+            {
+                name: 'Comment',
+                route: ROUTE_API_DOC.SOCIAL.COMMENT,
+                icon: 'zmdi-comment',
+            },
+            {
+                name: 'Post',
+                route: ROUTE_API_DOC.SOCIAL.POST,
+                icon: 'zmdi-edit',
+            }
+        ]
+    },
+    {
+        name: 'Video',
+        route: null,
+        icon: 'zmdi-videocam',
+        subList: [
+            {
+                name: 'Call',
+                route: ROUTE_API_DOC.VIDEO.CALL,
+                icon: 'zmdi-phone',
+            },
+            {
+                name: 'Screenshot',
+                route: ROUTE_API_DOC.VIDEO.SCREENSHOT,
+                icon: 'zmdi-camera-alt',
+            }
+        ]
+    },
+    {
+        name: 'Voice',
+        route: ROUTE_API_DOC.VOICE,
+        icon: 'zmdi-mic',
+    },
+];
+
 export const METHOD = {
     GET: 'GET',         //The GET method requests a representation of the specified resource. Requests using GET should only retrieve data.
     HEAD: 'HEAD',       //The HEAD method asks for a response identical to that of a GET request, but without the response body.
