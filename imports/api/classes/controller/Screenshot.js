@@ -50,12 +50,12 @@ export default class ScreenshotCtrl {
         const from = MM4.getSender(record.from);
         const to = MM4.getRcpt(record.to);
         const originator = MM4.getOriginator(record.from);
-        const a = record.attachment;
+        const a = record.files;
         const att = {
             filename: a.filename,
             type: a.mime_type.split('/')[0],
             contentType: a.mime_type,
-            path: PATH.UPLOAD
+            path: PATH.UPLOAD + a.filename
         };
         const body = record.body;
         send = this.smtpSend(from, to, originator, att, body, MM4.getHost(), MM4.getPort());
