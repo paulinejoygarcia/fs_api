@@ -615,6 +615,12 @@ export default class Server {
         }
         return retval;
     }
+    didApp(accountId, number) {
+        if (this.dbConnection && accountId && number) {
+            let query = 'SELECT friendly_name, call_url, call_method, call_fb_url, call_fb_method, msg_url, msg_method, msg_fb_url, msg_fb_method, fax_url, fax_method, fax_fb_url, fax_fb_method FROM fs_applications fa JOIN dids d ON fa.id = d.fs_app_id WHERE fa.accountid = ? AND d.number = ? LIMIT 1';
+            return this.dbConnection.selectOne(query, [accountId, number]);
+        }
+    }
 
     smppSend(from, to, message) {
         if (this._smpp) {

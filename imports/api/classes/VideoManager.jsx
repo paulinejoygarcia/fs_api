@@ -1,21 +1,19 @@
 import Util from '/imports/api/classes/Utilities';
 import { Meteor } from 'meteor/meteor';
 import moment from 'moment';
-import Message from './Message.js';
 import MM4 from './MM4';
-
+import { MessageDB } from '../message';
 export default class VideoManager {
-    constructor(accountId, smtpSend, smppSend, isAccountBillable, updateAccountBalance, didAccountOwner, processRequestUrl) {
+    constructor(accountId, isAccountBillable, updateAccountBalance,) {
         this.accountId = accountId;
-        this.didAccountOwner = didAccountOwner;
+        this.didApp = server.didApp;
         this.isAccountBillable = isAccountBillable;
-        this.processRequestUrl = processRequestUrl;
-        this.smtpSend = smtpSend;
-        this.smppSend = smppSend;
+        this.processRequestUrl = server.processRequestUrl;
+        this.smtpSend = server.smtpSend;
+        this.smppSend = server.smppSend;
         this.updateAccountBalance = updateAccountBalance;
         this.price = Meteor.settings.pricing.mms.out;
         this.json = {
-            _id: null,
             status: 0,
             price: 0,
             direction: "",
@@ -28,12 +26,6 @@ export default class VideoManager {
             account_id: accountId || null,
             created_dt: moment().valueOf()
         };
-        this.partial = {
-            to: '',
-            from: '',
-            body: '',
-            attachment: null
-        }
     }
 
     parseJSON(json) {
@@ -43,25 +35,13 @@ export default class VideoManager {
         };
     }
 
-    parsePartial(json) {
-        this.partial = {
-            ...this.partial,
-            ...json
-        };
-    }
-
     flush() {
-        let record = new Message(this.partial);
-        record.account_id = this.accountId;
-        const insert = record.insert();
-        if (insert.success) {
-            this.parseJSON(Message.getById(insert.data));
-            return {
-                success: true,
-                data: insert.data
-            };
+        if (this.json._id) {
+            if (MessageDB.update(this.json._id, this.json)) {
+                return;
+            }
         }
-        return insert;
+        return (this.json._id = MessageDB.insert(this.json));
     }
 
     checkBalance() {
@@ -83,11 +63,6 @@ export default class VideoManager {
         };
 
         const record = this.json;
-        let send = {
-            success: false,
-            data: 'Failed sending message'
-        };
-
         const from = MM4.getSender(record.from);
         const to = MM4.getRcpt(record.to);
         const originator = MM4.getOriginator(record.from);
@@ -99,12 +74,13 @@ export default class VideoManager {
             path: PATH.UPLOAD + a.filename
         };
         const body = record.body;
-        send = this.smtpSend(from, to, originator, att, body, MM4.getHost(), MM4.getPort());
+        let send = this.smtpSend(from, to, originator, att, body, MM4.getHost(), MM4.getPort());
 
         if (send.success) {
             record.result = { internalId: send.data };
             record.price = this.price;
-            record.update();
+            this.parseJSON(record);
+            this.flush();
             if (!this.isAccountBillable(this.price)) {
                 return {
                     success: false,
@@ -114,11 +90,11 @@ export default class VideoManager {
             }
             this.updateAccountBalance(this.price);
 
-            const app = this.didAccountOwner(record.from);
+            const app = this.didApp(record.from);
             if (!app.success) return send;
 
             if (app.data.msg_url || app.data.msg_fb_url) {
-                const v = record.getValues();
+                const v = this.json;
                 delete v.result;
                 this.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
             }

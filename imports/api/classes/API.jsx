@@ -79,21 +79,6 @@ export default class API {
         return server.chargeAccount(this.accountData, price);
     }
 
-    didAccountOwner(number) {
-        let query = 'SELECT dids.accountid as aid, accounts.number as anum FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? ';
-        let result = this.databaseConnection.selectOne(query, [number]);
-        if (result) {
-            return {
-                success: true,
-                data: {
-                    id: result.aid,
-                    accountId: result.anum,
-                }
-            }
-        }
-        return result;
-    }
-
     doProcess(method, body) {
         delete body.accessCode;
         switch (this.endpoint) {
@@ -328,11 +313,11 @@ export default class API {
                 switch (method) {
                     case METHOD.POST:
                         try {
-                            const Message = new MessageManager(this.accountId, server.smtpSend, server.smppSend, this.isAccountBillable, this.updateAccountBalance, this.didAccountOwner, server.processRequestUrl);
-                            Message.parsePartial(body);
+                            const Message = new MessageManager(this.accountId, this.isAccountBillable, this.updateAccountBalance);
+                            Message.parseJSON(body);
                             let saveMessage = Message.flush();
                             let checkBalance = Message.checkBalance();
-                            if(!saveMessage.success) break;
+                            if(!saveMessage) break;
                             if(checkBalance.success) {
                              Message.send();
                                 return {
@@ -374,11 +359,11 @@ export default class API {
                     case METHOD.POST:
                         switch (this.subEndpoint) {
                             case ENDPOINT_ACTION.VIDEO_SCREENSHOT:
-                                const ScreenShot = new VideoManager(this.accountId, server.smtpSend, server.smppSend, this.isAccountBillable, this.updateAccountBalance, this.didAccountOwner, server.processRequestUrl);
-                                ScreenShot.parsePartial(body);
+                                const ScreenShot = new VideoManager(this.accountId, this.isAccountBillable, this.updateAccountBalance);
+                                ScreenShot.parseJSON(body);
                                 let saveMessage = ScreenShot.flush();
                                 let checkBalance = ScreenShot.checkBalance();
-                                if(!saveMessage.success) break;
+                                if(!saveMessage) break;
                                 if(checkBalance.success) {
                                     ScreenShot.send();
                                     return {

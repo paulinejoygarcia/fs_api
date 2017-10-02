@@ -1,21 +1,20 @@
 import Util from '/imports/api/classes/Utilities';
 import { Meteor } from 'meteor/meteor';
 import moment from 'moment';
-import Message from './Message.js';
 import MM4 from './MM4';
+import { MessageDB } from '../message';
 
 export default class MessageManager {
-    constructor(accountId, smtpSend, smppSend, isAccountBillable, updateAccountBalance, didAccountOwner, processRequestUrl) {
+    constructor(accountId, isAccountBillable, updateAccountBalance) {
         this.accountId = accountId;
-        this.didAccountOwner = didAccountOwner;
+        this.didApp = server.didApp;
         this.isAccountBillable = isAccountBillable;
-        this.processRequestUrl = processRequestUrl;
-        this.smtpSend = smtpSend;
-        this.smppSend = smppSend;
+        this.processRequestUrl = server.processRequestUrl;
+        this.smtpSend = server.smtpSend;
+        this.smppSend = server.smppSend;
         this.updateAccountBalance = updateAccountBalance;
         this.price = 0;
         this.json = {
-            _id: null,
             status: 0,
             price: 0,
             direction: "",
@@ -28,12 +27,6 @@ export default class MessageManager {
             account_id: accountId || null,
             created_dt: moment().valueOf()
         };
-        this.partial = {
-            to: '',
-            from: '',
-            body: '',
-            attachment: null
-        }
     }
 
     parseJSON(json) {
@@ -43,33 +36,20 @@ export default class MessageManager {
         };
     }
 
-    parsePartial(json) {
-        this.partial = {
-            ...this.partial,
-            ...json
-        };
-    }
-
     flush() {
-        let record = new Message(this.partial);
-        record.account_id = this.accountId;
-        const insert = record.insert();
-        if (insert.success) {
-            this.parseJSON(Message.getById(insert.data));
-            return {
-                success: true,
-                data: insert.data
-            };
+        if (this.json._id) {
+            if (MessageDB.update(this.json._id, this.json)) {
+                return;
+            }
         }
-        return insert;
-
+        return (this.json._id = MessageDB.insert(this.json));
     }
 
     checkBalance() {
         if (this.json.attachment) {
             this.price = Meteor.settings.pricing.mms.out;
         } else {
-            this.price = Meteor.settings.pricing.sms.out * Message.getParts(this.partial.body || '');
+            this.price = Meteor.settings.pricing.sms.out * Message.getParts(this.json.body || '');
         }
         if (!this.isAccountBillable(this.price))
             return {
@@ -116,7 +96,8 @@ export default class MessageManager {
             if (send.success) {
                 record.message_id = send.data;
                 record.price = this.price;
-                record.update();
+                this.parseJSON(record);
+                this.flush();
             }
         }
 
@@ -129,12 +110,12 @@ export default class MessageManager {
                 };
             }
             this.updateAccountBalance(this.price, "debit");
-            const app = this.didAccountOwner(record.from);
+            const app = this.didApp(this.accountId, record.from);
 
             if (!app.success) return send;
 
             if (app.data.msg_url || app.data.msg_fb_url) {
-                const v = record.getValues();
+                const v = this.json;
                 delete v._id;
                 delete v.result;
                 this.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
