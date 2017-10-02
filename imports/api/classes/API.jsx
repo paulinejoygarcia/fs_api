@@ -93,7 +93,7 @@ export default class API {
         return result;
     }
 
-    doProcess(method, body, smtpSend, smppSend, processRequestUrl) {
+    doProcess(method, body) {
         delete body.accessCode;
         switch (this.endpoint) {
             case ENDPOINT.AUTH: {
@@ -327,7 +327,7 @@ export default class API {
                 switch (method) {
                     case METHOD.POST:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, server.smtpSend, server.smppSend, server.processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
                             let res = ctrl.insert();
                             if (res.success) res = ctrl.send();
                             return res;
@@ -337,7 +337,7 @@ export default class API {
                         break;
                     case METHOD.GET:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, server.smtpSend, server.smppSend, server.processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
                             return {
                                 success: true,
                                 code: 200,
