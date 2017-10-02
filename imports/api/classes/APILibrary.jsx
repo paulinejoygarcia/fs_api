@@ -247,7 +247,7 @@ export default class APILibrary {
     }
 
     getSms(id, callback) {
-        this._get(this.endpoints.mms, id, callback);
+        this._get(this.endpoints.sms, id, callback);
     }
 
     sendSms(params, callback) {
