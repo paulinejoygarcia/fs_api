@@ -85,7 +85,7 @@ export default class MessageCtrl {
                 filename: a.filename,
                 type: a.mime_type.split('/')[0],
                 contentType: a.mime_type,
-                path: PATH.UPLOAD
+                path: PATH.UPLOAD + a.filename
             };
             const body = record.body;
             send = this.smtpSend(from, to, originator, att, body, MM4.getHost(), MM4.getPort());

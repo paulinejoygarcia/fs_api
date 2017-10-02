@@ -270,6 +270,82 @@ export default class Server {
                         break;
                 }
                 break;
+            case ENDPOINT.MESSAGE:
+                switch (method) {
+                    case METHOD.GET:
+                        if (!params.sub || !params.sub.trim()) {
+                            retval.code = 404;
+                            retval.error = 'Missing `id` access denied!';
+                            retval.success = false;
+                            return retval;
+                        }
+                        break;
+                    case METHOD.POST:
+                        let files = [];
+                        if(retval.body.files){
+                            retval.body.files.forEach(file => {
+                                if(file.fieldname == 'files'){
+                                    let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                    fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                    files.push({
+                                        filename: localpath,
+                                        encoding: file.encoding,
+                                        mime_type: file.mimetype
+                                    })
+                                }
+                            });
+                            retval.body.attachment = files;
+                        }
+                        joiSchema = {
+                            to: Joi.number(true),
+                            from: Joi.number(true),
+                            body: Joi.string(true),
+                            attachment: Joi.object()
+                        };
+                        break;
+                }
+                break;
+            case ENDPOINT.VIDEO:
+                switch (method) {
+                    case METHOD.GET:
+                        if (!params.sub || !params.sub.trim()) {
+                            retval.code = 404;
+                            retval.error = 'Missing `id` access denied!';
+                            retval.success = false;
+                            return retval;
+                        }
+                        break;
+                    case METHOD.POST:
+                        let files = [];
+                        if(retval.body.files){
+                            retval.body.files.forEach(file => {
+                                if(file.fieldname == 'files'){
+                                    let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                    fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                    files.push({
+                                        filename: localpath,
+                                        encoding: file.encoding,
+                                        mime_type: file.mimetype
+                                    })
+                                }
+                            });
+                            retval.body.attachment = files;
+                        }
+                        if(!retval.body.files || retval.body.files.length == 0){
+                            retval.code = 400;
+                            retval.error = '`files` is required';
+                            retval.success = false;
+                            return retval;
+                        }
+                        joiSchema = {
+                            to: Joi.number(true),
+                            from: Joi.number(true),
+                            body: Joi.string(true),
+                            attachment: Joi.object(true)
+                        };
+                        break;
+                }
+                break;
             case ENDPOINT.PUSH:
                 switch (method) {
                     case METHOD.POST:

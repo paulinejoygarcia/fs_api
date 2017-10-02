@@ -291,7 +291,6 @@ export default class API {
                         break;
                 }
                 break;
-
             case ENDPOINT.FAX:
                 switch (method) {
                     case METHOD.GET:
@@ -300,7 +299,6 @@ export default class API {
                         return this.faxSender(body.to, body.from, body.files);
                 }
                 break;
-
             case ENDPOINT.NUMBER:
                 switch (this.subEndpoint) {
                     case ENDPOINT_ACTION.NUMBER_AVAILABLE:
@@ -322,11 +320,11 @@ export default class API {
                         return this.socialPost(this.extEndpoint, body);
                 }
                 break;
-
             case ENDPOINT.MESSAGE:
                 switch (method) {
                     case METHOD.POST:
                         try {
+                            let files = [];
                             const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
                             let res = ctrl.insert();
                             if (res.success) res = ctrl.send();
