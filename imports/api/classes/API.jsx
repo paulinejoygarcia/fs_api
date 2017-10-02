@@ -63,6 +63,17 @@ export default class API {
         }
         return false;
     }
+    getAccountBalance() {
+        return server.getAccountBalance(this.accountData);
+    }
+
+    isAccountBillable(price) {
+        return server.isAccountBillable(this.accountData, price);
+    }
+
+    updateAccountBalance(amount, paymentType = 'debit') {
+        return server.updateAccountBalance(this.accountData, amount, paymentType);
+    }
 
     chargeAccount(price) {
         return server.chargeAccount(this.accountData, price);
@@ -305,17 +316,20 @@ export default class API {
                             const Message = new MessageManager(this.accountId);
                             Message.parseJSON(body);
                             let saveMessage = Message.flush();
-                            let checkBalance = Message.checkBalance();
+                            let price = Message.getPrice();
                             if(!saveMessage) break;
-                            if(checkBalance.success) {
-                             Message.send();
+                            if (!this.isAccountBillable(price))
+                                return {
+                                    success: false,
+                                    code: 400,
+                                    error: 'Insufficient funds'
+                                };
+                            if(this.updateAccountBalance(price, "debit") && Message.send().success) {
                                 return {
                                     success: true,
                                     code: 200,
                                     data: 'Message Sent.'
                                 };
-                            }else {
-                                return checkBalance;
                             }
                         } catch (err) {
                             console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
@@ -348,20 +362,23 @@ export default class API {
                     case METHOD.POST:
                         switch (this.subEndpoint) {
                             case ENDPOINT_ACTION.VIDEO_SCREENSHOT:
-                                const ScreenShot = new VideoManager(this.accountId, this.isAccountBillable, this.updateAccountBalance);
+                                const ScreenShot = new VideoManager(this.accountId);
                                 ScreenShot.parseJSON(body);
                                 let saveMessage = ScreenShot.flush();
-                                let checkBalance = ScreenShot.checkBalance();
+                                let price = ScreenShot.getPrice();
                                 if(!saveMessage) break;
-                                if(checkBalance.success) {
-                                    ScreenShot.send();
+                                if (!this.isAccountBillable(price))
+                                    return {
+                                        success: false,
+                                        code: 400,
+                                        error: 'Insufficient funds'
+                                    };
+                                if(this.updateAccountBalance(price, "debit") && ScreenShot.send().success) {
                                     return {
                                         success: true,
                                         code: 200,
                                         data: 'Message Sent.'
                                     };
-                                }else {
-                                    return checkBalance;
                                 }
                         }
                         break;

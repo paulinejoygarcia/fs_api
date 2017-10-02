@@ -8,11 +8,9 @@ export default class MessageManager {
     constructor(accountId) {
         this.accountId = accountId;
         this.didApp = server.didApp;
-        this.isAccountBillable = server.isAccountBillable;
         this.processRequestUrl = server.processRequestUrl;
         this.smtpSend = server.smtpSend;
         this.smppSend = server.smppSend;
-        this.updateAccountBalance = server.updateAccountBalance;
         this.price = 0;
         this.json = {
             status: 0,
@@ -45,6 +43,15 @@ export default class MessageManager {
         return (this.json._id = MessageDB.insert(this.json));
     }
 
+    getPrice(){
+        if (this.json.attachment) {
+            this.setPrice(Meteor.settings.pricing.mms.out);
+        } else {
+            this.setPrice(Meteor.settings.pricing.sms.out * this.getParts(this.json.body || ''));
+        }
+        return this.price;
+    }
+
     setPrice(price){
         this.price = price;
     }
@@ -52,23 +59,6 @@ export default class MessageManager {
     getParts(body) {
         const splitted = splitSms.split(body);
         return splitted.parts.length;
-    }
-
-    checkBalance() {
-        if (this.json.attachment) {
-            this.setPrice(Meteor.settings.pricing.mms.out);
-        } else {
-            this.setPrice(Meteor.settings.pricing.sms.out * this.getParts(this.json.body || ''));
-        }
-        if (!this.isAccountBillable(this.price))
-            return {
-                success: false,
-                code: 400,
-                error: 'Insufficient funds'
-            };
-        return {
-            success: true
-        }
     }
 
     send() {
@@ -111,14 +101,6 @@ export default class MessageManager {
         }
 
         if (send.success) {
-            if (!this.isAccountBillable(this.price)) {
-                return {
-                    success: false,
-                    code: 400,
-                    error: 'Insufficient funds'
-                };
-            }
-            this.updateAccountBalance(this.price, "debit");
             const app = this.didApp(this.accountId, record.from);
 
             if (!app.success) return send;

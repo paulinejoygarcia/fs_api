@@ -27,7 +27,9 @@ export default class VideoManager {
             created_dt: moment().valueOf()
         };
     }
-
+    getPrice(){
+        return this.price;
+    }
     parseJSON(json) {
         this.json = {
             ...this.json,
@@ -60,7 +62,6 @@ export default class VideoManager {
             success: false,
             data: 'Message record not found'
         };
-
         const record = this.json;
         const from = MM4.getSender(record.from);
         const to = MM4.getRcpt(record.to);
@@ -80,25 +81,14 @@ export default class VideoManager {
             record.price = this.price;
             this.parseJSON(record);
             this.flush();
-            if (!this.isAccountBillable(this.price)) {
-                return {
-                    success: false,
-                    code: 400,
-                    error: 'Insufficient funds'
-                };
-            }
-            this.updateAccountBalance(this.price);
-
             const app = this.didApp(record.from);
             if (!app.success) return send;
-
             if (app.data.msg_url || app.data.msg_fb_url) {
                 const v = this.json;
                 delete v.result;
                 this.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
             }
         }
-
         return send;
     }
 }
