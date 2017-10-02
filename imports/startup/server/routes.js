@@ -10,9 +10,6 @@ Picker.middleware(bodyParser.json());
 Picker.middleware(bodyParser.urlencoded({ extended: false }));
 
 Meteor.startup(() => {
-    server.onConnectMySQL();
-    server.connectFreeswitch();
-
     Picker.route(`${API_BASE}:accountSid/:endpoint?`, function (params, request, response, next) {
         server.processRequest(params, request, response, next);
     });

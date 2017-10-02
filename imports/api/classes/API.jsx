@@ -75,22 +75,11 @@ export default class API {
     }
 
     chargeAccount(price) {
-        return server.chargeAccount(this.accountData, price);
+        return server.chargeAccount(this.accountData ? this.accountData.id : null, price);
     }
 
-    didAccountOwner(number) {
-        let query = 'SELECT dids.accountid as aid, accounts.number as anum FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? ';
-        let result = this.databaseConnection.selectOne(query, [number]);
-        if (result) {
-            return {
-                success: true,
-                data: {
-                    id: result.aid,
-                    accountId: result.anum,
-                }
-            }
-        }
-        return result;
+    didOwner(number) {
+        return server.didOwner(number);
     }
 
     doProcess(method, body, smtpSend, smppSend, processRequestUrl) {
@@ -327,7 +316,7 @@ export default class API {
                 switch (method) {
                     case METHOD.POST:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didOwner);
                             let res = ctrl.insert();
                             if (res.success) res = ctrl.send();
                             return res;
@@ -337,7 +326,7 @@ export default class API {
                         break;
                     case METHOD.GET:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didOwner);
                             return {
                                 success: true,
                                 code: 200,
@@ -361,7 +350,7 @@ export default class API {
                     case METHOD.POST:
                         switch (this.subEndpoint) {
                             case ENDPOINT_ACTION.VIDEO_SCREENSHOT:
-                                const ctrl = new ScreenshotsCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                                const ctrl = new ScreenshotsCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didOwner);
                                 let res = ctrl.insert();
                                 if (res.success) res = ctrl.send();
                                 return res;

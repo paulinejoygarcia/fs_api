@@ -7,28 +7,25 @@ import XmlParser from './XmlParser';
 export default class Freeswitch {
     constructor(ip, port, password) {
         const that = this;
-        that._ip = ip;
-        that._port = port;
-        that._password = password;
-        that._connected = false;
+        that.connected = false;
         that.astppDB = null;
 
         let fut = new npmFuture();
         showStatus('Connecting to FreeSWITCH Server... ip:`%s`', ip || 'localhost');
-        that._connection = new npmESL.Connection(this._ip, this._port, this._password, function () {
+        that.connection = new npmESL.Connection(ip, port, password, function () {
             showStatus('Successfully connected to FreeSWITCH Server.');
-            that._connection.events('json', 'all');
+            that.connection.events('json', 'all');
 
             fut.return(true);
         });
-        that._connection.on('error', function (ex) {
+        that.connection.on('error', function (ex) {
             fut.return(false);
         });
-        that._connected = fut.wait();
+        that.connected = fut.wait();
     }
 
     isConnected() {
-        return this._connected;
+        return this.connected;
     }
 
     setAstppDB(wrapper) {
@@ -143,7 +140,7 @@ export default class Freeswitch {
     sendFax(from, to, id, files, accountId) {
         from = from.replace(/\D/g, '');
         to = to.replace(/\D/g, '');
-        if (this._connected && from && to && id && file) {
+        if (this.connected && from && to && id && file) {
             let recipient = this.getCallOutboundGateway(to, accountId);
             if (!recipient.success) return recipient;
 
@@ -162,7 +159,7 @@ export default class Freeswitch {
             params.push(`{${vars.join(',')}}${recipient.data}`);
             params.push(`&txfax($$\{temp_dir\}/${file})`);
 
-            this._connection.sendRecv(`api originate ${params.join(' ')}`);
+            this.connection.sendRecv(`api originate ${params.join(' ')}`);
             return {
                 success: true,
                 data: 'Fax queued'

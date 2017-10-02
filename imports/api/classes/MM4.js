@@ -78,7 +78,7 @@ export default class MM4 {
         return parsed;
     }
 
-    static constructMms(from, to, originator, att, body = '') {
+    static constructMms(from, to, att, body = '', originator = null) {
         const dn = Date.now();
         let eml = [
             `From: ${from}`,
@@ -88,7 +88,7 @@ export default class MM4 {
             `X-Mms-Message-Type: MM4_forward.REQ`,
             `X-Mms-Transaction-Id: "${dn}"`,
             `X-Mms-Ack-Request: Yes`,
-            `X-Mms-Originator-System: ${originator}`,
+            `X-Mms-Originator-System: <${originator || MM4.getOriginator(from)}>`,
             `Content-Type: multipart/related; Start="<smil>"; Type="application/smil";boundary="${dn}_${dn}"`,
             `Date: ${new Date().toString()}`,
 
@@ -108,24 +108,27 @@ export default class MM4 {
         let dataText = null;
 
         if (att) {
-            switch (att.type) {
-                case 'image': smilMedia = `<img src="${att.filename}" region="Image"/>`; break;
-                case 'audio': smilMedia = `<audio src="${att.filename}" region="Audio"/>`; break;
-                case 'video': smilMedia = `<video src="${att.filename}" region="Video"/>`; break;
-            }
+            if (att.mime_type.indexOf('image') > -1)
+                smilMedia = `<img src="${att.filename}" region="Image"/>`;
+
+            if (att.mime_type.indexOf('audio') > -1)
+                smilMedia = `<audio src="${att.filename}" region="Audio"/>`;
+
+            if (att.mime_type.indexOf('video') > -1)
+                smilMedia = `<video src="${att.filename}" region="Video"/>`;
 
             dataMedia = [
                 `--${dn}_${dn}`,
                 `MIME-Version: 1.0`,
                 `Content-Id: "<${att.filename}>"`,
-                `Content-Type: ${att.contentType};Name="${att.filename}"`,
+                `Content-Type: ${att.mime_type};Name="${att.filename}"`,
                 `Content-Disposition: attachment;filename=${att.filename}`,
                 `Content-Location: ${att.filename}`,
                 `Content-Transfer-Encoding: base64`,
                 ``,
             ];
 
-            const file = npmFS.readFileSync(att.path + att.filename);
+            const file = npmFS.readFileSync(PATH.UPLOAD + att.filename);
             const media64 = new Buffer(file).toString('base64');
             dataMedia.push(media64);
         }

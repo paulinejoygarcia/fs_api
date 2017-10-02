@@ -159,7 +159,6 @@ class Intro extends Component {
 }
 
 export const CurrentApiCredentialsForm = function (creds = {}) {
-    console.log('---creds', creds);
     if (creds && creds.accountId) {
         return (
             <div className="col-md-12">

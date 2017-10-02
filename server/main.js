@@ -4,3 +4,6 @@ import '../imports/startup/server';
 import '../imports/startup/both';
 server = new Server();
 server.onConnectMySQL();
+server.connectFreeswitch();
+server.connectSMPP();
+server.connectSMTP();
