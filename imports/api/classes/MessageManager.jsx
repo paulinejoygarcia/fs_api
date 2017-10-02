@@ -1,77 +1,94 @@
-import Message from '../Message.js';
-import MM4 from '../MM4';
+import Util from '/imports/api/classes/Utilities';
+import { Meteor } from 'meteor/meteor';
+import moment from 'moment';
+import Message from './Message.js';
+import MM4 from './MM4';
 
-export default class MessageCtrl {
-    constructor(db, params = {}, accoundId, send, smppSend, processRequestUrl, updateAccountBalance, isAccountBillable, getAccountBalance, didAccountOwner, id = null) {
-        this.databaseConnection = db;
-        this.params = params;
-        this.accountId = accoundId;
-        this.id = id;
-        this.record = null;
-        this.smtpSend = send;
-        this.smppSend = smppSend;
-        this.processRequestUrl = processRequestUrl;
-        this.updateAccountBalance = updateAccountBalance;
-        this.isAccountBillable = isAccountBillable;
-        this.getAccountBalance = getAccountBalance;
+export default class MessageManager {
+    constructor(accountId, smtpSend, smppSend, isAccountBillable, updateAccountBalance, didAccountOwner, processRequestUrl) {
+        this.accountId = accountId;
         this.didAccountOwner = didAccountOwner;
-        this.user = null;
-        if (id = this.id) {
-            const r = Message.getById(id);
-            if (r) this.record = r;
-        }
-        if (this.params.attachment) {
-            this.price = Meteor.settings.pricing.mms.out;
-        } else {
-            this.price = Meteor.settings.pricing.sms.out * Message.getParts(this.params.body || '');
+        this.isAccountBillable = isAccountBillable;
+        this.processRequestUrl = processRequestUrl;
+        this.smtpSend = smtpSend;
+        this.smppSend = smppSend;
+        this.updateAccountBalance = updateAccountBalance;
+        this.price = 0;
+        this.json = {
+            _id: null,
+            status: 0,
+            price: 0,
+            direction: "",
+            body: "",
+            from: "",
+            result: null,
+            message_id: null,
+            attachment: null,
+            to: "12345",
+            account_id: accountId || null,
+            created_dt: moment().valueOf()
+        };
+        this.partial = {
+            to: '',
+            from: '',
+            body: '',
+            attachment: null
         }
     }
 
-    list() {
-        if (this.id) {
-            if (r = this.record) return {
-                success: true,
-                data: r.getValues()
-            };
-            else return {
-                success: false,
-                data: 'Message record not found'
-            };
-        }
-
-        const records = Message.getAll({
-            account_id: this.accountId,
-        }, {
-            sort: { created_dt: 1 }
-        });
-        return records;
+    parseJSON(json) {
+        this.json = {
+            ...this.json,
+            ...json
+        };
     }
 
-    insert() {
-        let p = this.params;
-        if (!this.getAccountBalance > this.price)
-            return {
-                success: false,
-                code: 400,
-                data: 'Insufficient funds'
-            };
+    parsePartial(json) {
+        this.partial = {
+            ...this.partial,
+            ...json
+        };
+    }
 
-        let record = new Message(p);
+    flush() {
+        let record = new Message(this.partial);
         record.account_id = this.accountId;
         const insert = record.insert();
         if (insert.success) {
-            this.record = Message.getById(insert.data);
+            this.parseJSON(Message.getById(insert.data));
+            return {
+                success: true,
+                data: insert.data
+            };
         }
         return insert;
+
+    }
+
+    checkBalance() {
+        if (this.json.attachment) {
+            this.price = Meteor.settings.pricing.mms.out;
+        } else {
+            this.price = Meteor.settings.pricing.sms.out * Message.getParts(this.partial.body || '');
+        }
+        if (!this.isAccountBillable(this.price))
+            return {
+                success: false,
+                code: 400,
+                error: 'Insufficient funds'
+            };
+        return {
+            success: true
+        }
     }
 
     send() {
-        if (!this.record) return {
+        if (!this.json) return {
             success: false,
             data: 'Message record not found'
         };
 
-        const record = this.record;
+        const record = this.json;
         let send = {
             success: false,
             data: 'Failed sending message'
@@ -85,7 +102,7 @@ export default class MessageCtrl {
                 filename: a.filename,
                 type: a.mime_type.split('/')[0],
                 contentType: a.mime_type,
-                path: PATH.UPLOAD
+                path: PATH.UPLOAD + a.filename
             };
             const body = record.body;
             send = this.smtpSend(from, to, originator, att, body, MM4.getHost(), MM4.getPort());
@@ -104,13 +121,6 @@ export default class MessageCtrl {
         }
 
         if (send.success) {
-            if (this.user)
-                if (!this.getAccountBalance >= this.price)
-                    return {
-                        success: false,
-                        data: 'Insufficient funds'
-                    };
-
             if (!this.isAccountBillable(this.price)) {
                 return {
                     success: false,

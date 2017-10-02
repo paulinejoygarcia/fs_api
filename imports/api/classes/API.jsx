@@ -11,9 +11,10 @@ import { CCInfoDB, BillingInfoDB } from '../payment';
 import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
 import SocialCommentManager, { SocialCommentDB } from './SocialCommentManager';
 import SocialPostManager, { SocialPostDB } from './SocialPostManager';
+import MessageManager from './MessageManager';
+import VideoManager from './VideoManager';
+import { MessageDB } from '../message';
 import moment from 'moment';
-import MessageCtrl from './controller/Message';
-import ScreenshotsCtrl from './controller/Screenshot';
 import { PushNotifDB } from '../pushNotifications';
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
@@ -93,7 +94,7 @@ export default class API {
         return result;
     }
 
-    doProcess(method, body, smtpSend, smppSend, processRequestUrl) {
+    doProcess(method, body) {
         delete body.accessCode;
         switch (this.endpoint) {
             case ENDPOINT.AUTH: {
@@ -327,21 +328,33 @@ export default class API {
                 switch (method) {
                     case METHOD.POST:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
-                            let res = ctrl.insert();
-                            if (res.success) res = ctrl.send();
-                            return res;
+                            const Message = new MessageManager(this.accountId, server.smtpSend, server.smppSend, this.isAccountBillable, this.updateAccountBalance, this.didAccountOwner, server.processRequestUrl);
+                            Message.parsePartial(body);
+                            let saveMessage = Message.flush();
+                            let checkBalance = Message.checkBalance();
+                            if(!saveMessage.success) break;
+                            if(checkBalance.success) {
+                             Message.send();
+                                return {
+                                    success: true,
+                                    code: 200,
+                                    data: 'Message Sent.'
+                                };
+                            }else {
+                                return checkBalance;
+                            }
                         } catch (err) {
                             console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
                         }
                         break;
                     case METHOD.GET:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            let messages = MessageDB.find({account_id: this.accountId});
                             return {
                                 success: true,
                                 code: 200,
-                                data: ctrl.list()
+                                count: messages.count(),
+                                data: messages.fetch()
                             };
                         } catch (err) {
                             console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
@@ -361,10 +374,21 @@ export default class API {
                     case METHOD.POST:
                         switch (this.subEndpoint) {
                             case ENDPOINT_ACTION.VIDEO_SCREENSHOT:
-                                const ctrl = new ScreenshotsCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
-                                let res = ctrl.insert();
-                                if (res.success) res = ctrl.send();
-                                return res;
+                                const ScreenShot = new VideoManager(this.accountId, server.smtpSend, server.smppSend, this.isAccountBillable, this.updateAccountBalance, this.didAccountOwner, server.processRequestUrl);
+                                ScreenShot.parsePartial(body);
+                                let saveMessage = ScreenShot.flush();
+                                let checkBalance = ScreenShot.checkBalance();
+                                if(!saveMessage.success) break;
+                                if(checkBalance.success) {
+                                    ScreenShot.send();
+                                    return {
+                                        success: true,
+                                        code: 200,
+                                        data: 'Message Sent.'
+                                    };
+                                }else {
+                                    return checkBalance;
+                                }
                         }
                         break;
                     default:

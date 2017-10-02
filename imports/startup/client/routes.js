@@ -30,8 +30,8 @@ export const onAuthChange = (isAuthenticated) => {
   };
   if (isUnauthenticatedPage() && isAuthenticated)
     customHistory.replace('/');
-  else if (!isUnauthenticatedPage() && !isAuthenticated)
-    customHistory.replace('/login');
+  // else if (!isUnauthenticatedPage() && !isAuthenticated)
+    // customHistory.replace('/login');
 };
 
 export default routes = (

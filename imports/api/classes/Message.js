@@ -11,16 +11,30 @@ const file = function (label) {
         mime_type: Joi.string().required().options({ language: { any: { required: 'should have a mime_type' } } }).label(label),
     }).options({ language: { object: { base: 'must be a file' } } });
 };
+const array = function(type, min = 0) {
+    let array = Joi.array().items(type);
+    if (min && parseInt(min))
+        array.min(min);
+    return array;
+}
+const number = function(isRequired = false) {
+    let type = Joi.number();
+
+    if (isRequired)
+        type = type.required();
+
+    return type;
+};
 const schema = function () {
     return {
         _id: Joi.string(),
         account_id: Joi.string(),
         result: Joi.object().allow(null).default(null),
-        from: Joi.string(),
-        to: Joi.string(),
+        from: number(),
+        to: number(),
         direction: Joi.string().valid('outbound', 'inbound').default('outbound'),
         message_id: Joi.string().allow(null).default(null),
-        attachment: file('files').allow(null).default(null),
+        attachment: array(file('files', false), 1),
         body: Joi.string(),
         status: Joi.number().valid(0, 1).default(0),
         price: Joi.number().default(0),

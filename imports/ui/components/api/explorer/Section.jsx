@@ -24,6 +24,7 @@ class Section extends Component {
     }
     render() {
         let content = null;
+        console.log(this.props);
         switch (this.props.route) {
             case ROUTE_API_DOC.APPLICATION:
                 content = <Application credentials={this.props.credentials} />;
