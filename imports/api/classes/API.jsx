@@ -6,6 +6,7 @@ import Facebook from './Facebook';
 import Linkedin from './Linkedin';
 import Pinterest from './Pinterest';
 import Twitter from './Twitter';
+import Instagram from './Instagram';
 import FaxManager, { FaxDB } from './FaxManager';
 import { CCInfoDB, BillingInfoDB } from '../payment';
 import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
@@ -15,6 +16,7 @@ import moment from 'moment';
 import MessageCtrl from './controller/Message';
 import ScreenshotsCtrl from './controller/Screenshot';
 import { PushNotifDB } from '../pushNotifications';
+
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
         this.api = api;
@@ -218,6 +220,7 @@ export default class API {
                     'uniqueid as call_id' +
                     ' FROM cdrs WHERE accountid = ' +
                     '(SELECT id from accounts WHERE account_id = ?)' +
+                    (this.subEndpoint?" AND uniqueid = '"+this.subEndpoint+"'":"") +
                     ' ORDER BY callstart DESC' +
                     (body.limit ? ' LIMIT ' + body.limit : '');
                 this.databaseConnection.select(query, [this.accountId]).forEach((accInfo) => {

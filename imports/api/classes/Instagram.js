@@ -1,14 +1,13 @@
-import npmInstagram from 'instagram-private-api';
+import npmInstagram from 'instagram-private-tmq';
 import npmFuture from 'fibers/future';
 
-const Client = npmInstagram.V1
+const Client = npmInstagram.V1;
 
 export default class Instagram {
     constructor(username, password) {
         let self = this;
         self.username = username;
         self.password = password;
-        
         self.device = new Client.Device(username);
         self.storage = new Client.CookieMemoryStorage();
     }

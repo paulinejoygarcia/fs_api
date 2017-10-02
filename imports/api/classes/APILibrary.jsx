@@ -24,7 +24,7 @@ export default class APILibrary {
             socialComment: 'social/comment',
             socialPost: 'social/post',
             video: 'video/call',
-            voice: 'voice/call'
+            voice: 'voice'
         };
     }
 
@@ -247,7 +247,7 @@ export default class APILibrary {
     }
 
     getSms(id, callback) {
-        this._get(this.endpoints.sms, id, callback);
+        this._get(this.endpoints.mms, id, callback);
     }
 
     sendSms(params, callback) {

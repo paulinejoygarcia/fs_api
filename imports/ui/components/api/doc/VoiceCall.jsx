@@ -80,7 +80,7 @@ class VoiceCall extends Component {
                 <div className="widget p-4">
                     <h5 className="mb-4">HTTP GET</h5>
                     <p className="mb-4 docs">Get a single Voice Call Instance Resource</p>
-                    <code>GET {API_BASE}{'{ACCOUNT_ID}/voice/{APPLICATION_ID}'}</code><br /><br />
+                    <code>GET {API_BASE}{'{ACCOUNT_ID}/voice/{CALL_ID}'}</code><br /><br />
                     <h6>Sample Response</h6>
                     <JSONPretty json={getOne}></JSONPretty>
                     <hr />
