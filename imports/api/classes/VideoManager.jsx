@@ -4,14 +4,14 @@ import moment from 'moment';
 import MM4 from './MM4';
 import { MessageDB } from '../message';
 export default class VideoManager {
-    constructor(accountId, isAccountBillable, updateAccountBalance,) {
+    constructor(accountId) {
         this.accountId = accountId;
         this.didApp = server.didApp;
-        this.isAccountBillable = isAccountBillable;
+        this.isAccountBillable = server.isAccountBillable;
         this.processRequestUrl = server.processRequestUrl;
         this.smtpSend = server.smtpSend;
         this.smppSend = server.smppSend;
-        this.updateAccountBalance = updateAccountBalance;
+        this.updateAccountBalance = server.updateAccountBalance;
         this.price = Meteor.settings.pricing.mms.out;
         this.json = {
             status: 0,
@@ -43,7 +43,6 @@ export default class VideoManager {
         }
         return (this.json._id = MessageDB.insert(this.json));
     }
-
     checkBalance() {
         if (!this.isAccountBillable(this.price))
             return {

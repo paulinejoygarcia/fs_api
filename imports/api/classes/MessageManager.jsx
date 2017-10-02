@@ -5,14 +5,14 @@ import MM4 from './MM4';
 import { MessageDB } from '../message';
 
 export default class MessageManager {
-    constructor(accountId, isAccountBillable, updateAccountBalance) {
+    constructor(accountId) {
         this.accountId = accountId;
         this.didApp = server.didApp;
-        this.isAccountBillable = isAccountBillable;
+        this.isAccountBillable = server.isAccountBillable;
         this.processRequestUrl = server.processRequestUrl;
         this.smtpSend = server.smtpSend;
         this.smppSend = server.smppSend;
-        this.updateAccountBalance = updateAccountBalance;
+        this.updateAccountBalance = server.updateAccountBalance;
         this.price = 0;
         this.json = {
             status: 0,
@@ -45,11 +45,20 @@ export default class MessageManager {
         return (this.json._id = MessageDB.insert(this.json));
     }
 
+    setPrice(price){
+        this.price = price;
+    }
+
+    getParts(body) {
+        const splitted = splitSms.split(body);
+        return splitted.parts.length;
+    }
+
     checkBalance() {
         if (this.json.attachment) {
-            this.price = Meteor.settings.pricing.mms.out;
+            this.setPrice(Meteor.settings.pricing.mms.out);
         } else {
-            this.price = Meteor.settings.pricing.sms.out * Message.getParts(this.json.body || '');
+            this.setPrice(Meteor.settings.pricing.sms.out * this.getParts(this.json.body || ''));
         }
         if (!this.isAccountBillable(this.price))
             return {

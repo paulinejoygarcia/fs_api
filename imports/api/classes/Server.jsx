@@ -43,6 +43,10 @@ export default class Server {
         return balance;
     }
 
+    isAccountBillable(price) {
+        return server.isAccountBillable(this.accountData, price);
+    }
+
     isAccountBillable(accountData, price) {
         if (this.getAccountBalance(accountData) >= parseFloat(price)) {
             return true;

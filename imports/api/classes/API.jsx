@@ -63,17 +63,6 @@ export default class API {
         }
         return false;
     }
-    getAccountBalance() {
-        return server.getAccountBalance(this.accountData);
-    }
-
-    isAccountBillable(price) {
-        return server.isAccountBillable(this.accountData, price);
-    }
-
-    updateAccountBalance(amount, paymentType = 'debit') {
-        return server.updateAccountBalance(this.accountData, amount, paymentType);
-    }
 
     chargeAccount(price) {
         return server.chargeAccount(this.accountData, price);
@@ -313,7 +302,7 @@ export default class API {
                 switch (method) {
                     case METHOD.POST:
                         try {
-                            const Message = new MessageManager(this.accountId, this.isAccountBillable, this.updateAccountBalance);
+                            const Message = new MessageManager(this.accountId);
                             Message.parseJSON(body);
                             let saveMessage = Message.flush();
                             let checkBalance = Message.checkBalance();
