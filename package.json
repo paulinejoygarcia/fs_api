@@ -18,7 +18,7 @@
     "gm": "^1.23.0",
     "history": "^4.7.2",
     "im": "^0.4.0",
-    "instagram-private-tmq": "^0.6.9",
+    "instagram-private-api": "^0.6.7",
     "joi": "^10.6.0",
     "meteor-node-stubs": "^0.2.11",
     "mime-types": "^2.1.16",

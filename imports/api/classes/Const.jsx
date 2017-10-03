@@ -162,6 +162,7 @@ export const ENDPOINT_ACTION = {
     MESSAGE_SMS: 'sms',
     MESSAGE_MMS: 'mms',
     VIDEO_CALL: 'call',
+    VOICE_CALL: 'call',
     VIDEO_SCREENSHOT: 'screenshot',
 };
 
@@ -188,7 +189,9 @@ export const ENDPOINT_CHECKPOINT = {
         [ENDPOINT_ACTION.VIDEO_CALL]: [METHOD.GET],
         [ENDPOINT_ACTION.VIDEO_SCREENSHOT]: [METHOD.GET, METHOD.POST]
     },
-    [ENDPOINT.VOICE]: [METHOD.GET],
+    [ENDPOINT.VOICE]: {
+        [ENDPOINT_ACTION.VOICE_CALL]: [METHOD.GET]
+    }
 };
 
 export const GRITTER_STATUS = {

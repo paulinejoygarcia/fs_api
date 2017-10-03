@@ -24,7 +24,7 @@ export default class APILibrary {
             socialComment: 'social/comment',
             socialPost: 'social/post',
             video: 'video/call',
-            voice: 'voice'
+            voice: 'voice/call'
         };
     }
 

@@ -209,7 +209,7 @@ export default class API {
                     'uniqueid as call_id' +
                     ' FROM cdrs WHERE accountid = ' +
                     '(SELECT id from accounts WHERE account_id = ?)' +
-                    (this.subEndpoint?" AND uniqueid = '"+this.subEndpoint+"'":"") +
+                    (this.extEndpoint?" AND uniqueid = '"+this.extEndpoint+"'":"") +
                     ' ORDER BY callstart DESC' +
                     (body.limit ? ' LIMIT ' + body.limit : '');
                 this.databaseConnection.select(query, [this.accountId]).forEach((accInfo) => {
