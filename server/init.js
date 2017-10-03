@@ -17,6 +17,6 @@ PATH = {
     GIT: `${basepath}.git${separator}`,
     METEOR: `${basepath}.meteor${separator}`
 };
-functions={};
+functions = {};
 Meteor.settings.config = Meteor.settings.config || {};
 Meteor.settings.public = Meteor.settings.public || {};

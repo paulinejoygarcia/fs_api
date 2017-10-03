@@ -3,13 +3,13 @@ import xmlParserModule from 'xml-parser';
 import Util from './Utilities';
 
 export default class XmlParser {
-    constructor(xml, accountId) {
-        this.account_id = accountId;
+    constructor(accountId) {
+        this.accountId = accountId;
     }
 
     setFreeswitch(freeswitch) {
         if (freeswitch && freeswitch.isConnected())
-            this._fs = freeswitch;
+            this.freeswitch = freeswitch;
     }
 
     setSmppSender(func) {
@@ -23,18 +23,20 @@ export default class XmlParser {
     }
 
     chat(attributes, children, content) {
-        if (!this._fs) return;
+        if (!this.freeswitch) return;
 
         if (!attributes.type) attributes.type = 'all';
 
         if (attributes.type == 'verto' || attributes.type == 'all')
-            this._fs.sendVertoChat(attributes.from, attributes.to, content);
+            this.freeswitch.sendVertoChat(attributes.from, attributes.to, content);
 
         if (attributes.type == 'sip' || attributes.type == 'all')
-            this._fs.sendSipChat(attributes.from, attributes.to, content);
+            this.freeswitch.sendSipChat(attributes.from, attributes.to, content);
     }
 
     dial(attributes, children, content) {
+        if (!this.freeswitch) return;
+
         let actions = [];
         let data = '';
         let toDial = [];
@@ -52,11 +54,11 @@ export default class XmlParser {
                             actions.push(`<action application="set" data="effective_caller_id_name=${cid}"/>`);
                             actions.push(`<action application="set" data="effective_caller_id_number=${cid}"/>`);
                         }
-                        const gw = 'this._astpp.callOutboundGateway(val, this.account_id)';//fix: apply astpp changes
-                        if (gw.success) {
-                            rcpt = gw.data;
-                        }
+                        const gateway = this.freeswitch.getCallOutboundGateway(this.accountId, val);
+                        if (gateway)
+                            rcpt = gateway;
                         break;
+                    case 'User': rcpt = `user/${val}`; break;
                 }
                 toDial.push(rcpt);
             }

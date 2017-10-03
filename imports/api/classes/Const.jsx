@@ -163,7 +163,7 @@ export const ENDPOINT_ACTION = {
     MESSAGE_MMS: 'mms',
     VIDEO_CALL: 'call',
     VIDEO_SCREENSHOT: 'screenshot',
-    VOICE_CALL: 'call'
+    VOICE_CALL: 'call',
 };
 
 export const ENDPOINT_CHECKPOINT = {

@@ -2,12 +2,18 @@ import API from './API';
 import Joi from './Joi';
 import Freeswitch from './Freeswitch';
 import MySqlWrapper from './MySqlWrapper';
+import MM4 from './MM4';
+import Smpp from './Smpp';
+import Smtp from './Smtp';
 import Util from './Utilities';
+import XmlParser from './XmlParser';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import moment from 'moment';
 import npmScp from 'scp2';
 import future from 'fibers/future';
+import fiber from 'fibers';
+import stream from 'stream';
 import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
 
 export default class Server {
@@ -68,6 +74,20 @@ export default class Server {
         return result;
     }
 
+    didOwner(number) {
+        if (this.dbConnection && number) {
+            let query = 'SELECT dids.accountid as aid, accounts.number as number, accounts.account_id as account_id FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? LIMIT 1';
+            return this.dbConnection.selectOne(query, [number]);
+        }
+    }
+
+    didApp(accountId, number) {
+        if (this.dbConnection && accountId && number) {
+            let query = 'SELECT friendly_name, call_url, call_method, call_fb_url, call_fb_method, msg_url, msg_method, msg_fb_url, msg_fb_method, fax_url, fax_method, fax_fb_url, fax_fb_method FROM fs_applications fa JOIN dids d ON fa.id = d.fs_app_id WHERE fa.accountid = ? AND d.number = ? LIMIT 1';
+            return this.dbConnection.selectOne(query, [accountId, number]);
+        }
+    }
+
     connectFreeswitch() {
         if (!Meteor.settings.freeswitch || !Meteor.settings.freeswitch.ip) {
             showError("No FreeSWITCH configuration found!");
@@ -79,6 +99,45 @@ export default class Server {
             fs.setAstppDB(this.dbConnection);
             this.freeswitch = fs;
         }
+    }
+
+    connectSMPP() {
+        if (!Meteor.settings.smpp || !Meteor.settings.smpp.ip) {
+            showError("No SMPP configuration found!");
+            return;
+        }
+
+        const that = this;
+        let smpp = new Smpp(Meteor.settings.smpp.ip, Meteor.settings.smpp.port, Meteor.settings.smpp.systemId, Meteor.settings.smpp.password, Meteor.settings.smpp.systemType);
+        if (smpp.isConnected()) {
+            that.smpp = smpp;
+            smpp.onDeliverSm((pdu) => {
+                const from = pdu.source_addr.toString().replace('+', '').trim();
+                const to = pdu.destination_addr.toString().replace('+', '').trim();
+                const message = pdu.short_message.message;
+                if (message.indexOf('dlvrd:') >= 0) {
+                    //delivery report
+                    showNotice(`SMPP delivery report: %s`, pdu);
+                } else {
+                    //sms receive
+                    showNotice(`SMPP new message received: %s`, pdu);
+                    fiber(function () {
+                        that.smppReceive(from, to, message);
+                    }).run();
+                }
+            });
+        }
+    }
+
+    connectSMTP() {
+        const that = this;
+        let smtp = Smtp.createServer(function (file) {
+            fiber(function () {
+                Meteor.setTimeout(function () {
+                    that.smtpReceive(file);
+                }, 300);
+            }).run();
+        });
     }
 
     /**
@@ -105,6 +164,7 @@ export default class Server {
                 let result = null;
                 let api = new API(accountSid, auth.api, auth.secret, data.body.accessCode, ipAddress);
                 api.setDBConnection(this.dbConnection);
+                api.setFSConnection(this.freeswitch);
 
                 if (endpoint !== ENDPOINT.AUTH && !api.checkAccessCode()) {
                     Util.affixResponse(response, 403, {
@@ -473,11 +533,11 @@ export default class Server {
                                                     filename: localpath,
                                                     encoding: file.encoding,
                                                     mime_type: file.mimetype
-                                                };    
-                                                break;    
+                                                };
+                                                break;
                                         }
                                     });
-                                }    
+                                }
                                 joiSchema = {
                                     status: Joi.string(true),
                                     image: Joi.file('image'),
@@ -501,7 +561,7 @@ export default class Server {
                                                 break;
                                         }
                                     });
-                                }        
+                                }
                                 joiSchema = {
                                     caption: Joi.string(),
                                     image: Joi.file('image'),
@@ -541,7 +601,7 @@ export default class Server {
                                                         break;
                                                 }
                                             });
-                                        }   
+                                        }
                                         joiSchema = {
                                             type: Joi.string(true),
                                             board: Joi.string(true),
@@ -576,7 +636,7 @@ export default class Server {
                                                 break;
                                         }
                                     });
-                                }       
+                                }
                                 joiSchema = {
                                     status: Joi.string(false, null, [], [], true),
                                     image: Joi.file('image')
@@ -616,8 +676,8 @@ export default class Server {
     }
 
     smppSend(from, to, message) {
-        if (this._smpp) {
-            return this._smpp.submitSm(from, to, message);
+        if (this.smpp) {
+            return this.smpp.submitSm(from, to, message);
         }
         return {
             success: false,
@@ -626,40 +686,29 @@ export default class Server {
     }
 
     smppReceive(from, to, message) {
-        const that = this;
-        const account = that._astpp.accountDidOwner(to);
-        if (!account.success) return;
+        //this confirms that a new sms was received
 
-        let price = Meteor.GV.PRICING.sms.in;
-        price = Message.getParts(message) * price;
-        const billable = that._astpp.checkBalance(price, account.data.account_id);
-        if (!billable.success) return billable;
-
-        const v = {
-            from: from,
-            to: to,
-            body: message,
-            direction: 'inbound',
-            message_id: Meteor.UTILS.md5Hash(from + to + message),
-            price: price,
-            account_id: account.data.account_id
-        };
-        let record = new Message(v);
-        record.insert();
-
-        const app = that._astpp.didApp(to);
-
-        if (!app.success) return;
-
-        if (app.data.msg_url || app.data.msg_fb_url) {
-            that._astpp.accountCharge(price, account.data.account_id);
-            const xml = Server.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
-        }
+        //TODO: 
+        //get owner of the did number (didOwner function)
+        //get number of parts the message body has to calculate total sms price (use getParts)
+        //check if account is billable, if not set result to insufficient funds
+        //get application related to the did number (didApp function)
+        //construct object to be sent to the msg_url of the application
+        //charge the account (use manager class when inserting record)
+        //send the constructed object to msg_url using processRequestUrl
     }
 
-    smtpSend(from, to, originator, att, body, host = 'localhost', port = 25) {
-        const fut = Server.newFuture();
-        const client = Smtp.createClient(host, port);
+    smtpSend(from, to, att, body) {
+        if (!Meteor.settings.mm4 || !Meteor.settings.mm4.host) {
+            showError("No MM4 configuration found!");
+            return;
+        }
+
+        const fut = new future();
+        const client = Smtp.createClient(Meteor.settings.mm4.host, Meteor.settings.mm4.port);
+
+        from = MM4.getSender(from);
+        to = MM4.getRcpt(to);
 
         client.once('idle', function () {
             client.useEnvelope({
@@ -669,8 +718,8 @@ export default class Server {
         });
 
         client.on('message', function () {
-            const eml = MM4.constructMms(`<${from}>`, `<${to}>`, `<${originator}>`, att, body);
-            const cws = Meteor.GV.FS.createWriteStream(`${Meteor.GV.UPLOAD_PATH}Message-snd-${Date.now()}.eml`);
+            const eml = MM4.constructMms(`<${from}>`, `<${to}>`, att, body);
+            const cws = fs.createWriteStream(`${PATH.UPLOAD}Message-snd-${Date.now()}.eml`);
             cws.once('open', (fd) => {
                 cws.write(eml);
                 cws.end();
@@ -683,7 +732,7 @@ export default class Server {
 
         client.on('ready', function (success, response) {
             if (success) {
-                console.log('The message was transmitted successfully', response);
+                showDebug('The message was transmitted successfully: %s', response);
                 client.quit();
                 const id = response.substring(response.lastIndexOf("<") + 1, response.lastIndexOf(">"));
                 fut.return({
@@ -711,67 +760,47 @@ export default class Server {
 
     smtpReceive(file) {
         const that = this;
-        const p = MM4.parseMms(file);
-        const msgId = p.messageId;
-        const body = p.body;
-        const attachment = p.attachment;
-        delete p.body;
-        delete p.attachment;
-        if (MM4.isResponse(p.messageType) && (rec = Message.getByInternalId(p.internalMessageId))) {
-            rec.result = p;
-            rec.message_id = msgId;
-            rec.update();
-        } else if (MM4.isRequest(p.messageType) && attachment) {
-            const from = MM4.getNumber(p.from);
-            const to = MM4.getNumber(p.to);
-            const account = that._astpp.accountDidOwner(to);
-            if (!account.success) return;
+        const mms = MM4.parseMms(file);
+        if (MM4.isResponse(mms.messageType)) {
+            showDebug('MMS send server response: %s', mms);
+            //this confirms that mms send is successful
 
-            const price = Meteor.GV.PRICING.mms.in;
-            const billable = that._astpp.checkBalance(price, account.data.account_id);
-            if (!billable.success) return billable;
+            //TODO:
+            //get related document from mongo db (use manager class when updating record)
+            //set result object
+            //set message id
+            //update document
+        } else if (MM4.isRequest(mms.messageType) && mms.attachment) {
+            showDebug('MMS received: %s', mms);
+            //this confirms that a new mms was received
 
-            const v = {
-                direction: 'inbound',
-                from: from,
-                to: to,
-                body: body,
-                attachment: attachment,
-                message_id: msgId,
-                result: p,
-                account_id: account.data.account_id,
-                price: price
-            };
-            let record = new Message(v);
-            record.insert();
-
-            const app = that._astpp.didApp(to);
-            if (!app.success) return;
-
-            if (app.data.msg_url || app.data.msg_fb_url) {
-                delete v.result;
-                that._astpp.accountCharge(price, account.data.account_id);
-                const xml = Server.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
-            }
+            //TODO:
+            //get owner of the did number (didOwner function)
+            //check if account is billable, if not set result to insufficient funds
+            //get application related to the did number (didApp function)
+            //construct object to be sent to the msg_url of the application
+            //charge the account (use manager class when inserting record)
+            //send the constructed object to msg_url using processRequestUrl
         }
     }
 
-    static processRequestUrl(params, url, method = 'get', fallback, fb_method = 'get', accountId = null) {
+    processRequestUrl(params, url, method = 'get', fallback, fb_method = 'get', accountId = null) {
         let xml = {};
         if (url && method) {
-            xml = Server.httpRequest(url, method, params);
+            xml = this.httpRequest(url, method, params);
             if (xml.statusCode != 200 && fallback && fb_method)
-                xml = Server.httpRequest(fallback, fb_method, params);
+                xml = this.httpRequest(fallback, fb_method, params);
         }
 
-        if (x = xml.data) {
-            let xp = new XmlParser(x, accountId);
-            const parsed = xp.process();
+        if (xml.data) {
+            let xp = new XmlParser(accountId);
+            xp.setFreeswitch(this.freeswitch);
+            const parsed = xp.process(xml.data);
             if (parsed.success) return parsed.data;
         }
     }
 
-    static httpRequest(url, method, params, data, headers) {
+    httpRequest(url, method, params, data, headers) {
         if (method.toLowerCase() != 'get' && method.toLowerCase() != 'post') {
             return {
                 statusCode: 400,
@@ -796,14 +825,14 @@ export default class Server {
         }
     }
 
-    static newFuture() {
-        return new Meteor.GV.FUTURE();
-    }
-
     processFreeswitchRequest(params, request, response, next) {
         let sections = ['dialplan', 'fax_callback'];
         let section = params.section;
-        let ipAddress = request.connection.remoteAddress;
+        let ipAddress = request.headers['x-forwarded-for'] ||
+            request.connection.remoteAddress ||
+            request.socket.remoteAddress ||
+            request.connection.socket.remoteAddress;
+
         if (ipAddress != Meteor.settings.freeswitch.ip && ipAddress != '127.0.0.1') {
             Util.affixResponse(response, 401, {
                 'Content-Type': 'application/json',
@@ -816,15 +845,24 @@ export default class Server {
                 'Allow': 'POST',
                 'Content-Type': 'application/json',
             }, JSON.stringify({ success: false, error: 'Method not allowed!' }));
+            return;
         }
 
         if (sections.indexOf(section) === -1) {
             Util.affixResponse(response, 404, {
                 'Content-Type': 'application/json',
             }, JSON.stringify({ success: false, error: `Endpoint not found: ${section}` }));
+            return;
         }
 
-        let body = response.body;
+        if (!this.freeswitch) {
+            Util.affixResponse(response, 400, {
+                'Content-Type': 'application/json',
+            }, JSON.stringify({ success: false, error: `Freeswitch server down` }));
+            return;
+        }
+
+        let body = request.body;
         let retval = {
             success: true,
             code: 200,
@@ -832,7 +870,7 @@ export default class Server {
         };
 
         switch (section) {
-            case 'diaplan':
+            case 'dialplan':
                 retval = this.freeswitch.dialplan(body);
                 break;
             case 'fax_callback':
@@ -844,6 +882,7 @@ export default class Server {
             'Content-Type': 'application/json',
         }, JSON.stringify(retval));
     }
+
     pdfToTiff(src, dest) {
         if (typeof src == 'string') src = [src];
         const command = 'gs -q -r204x196 -g1728x2156 -dNOPAUSE -dBATCH -dSAFER -sDEVICE=tiffg3 -sOutputFile=' + dest + ' ' + src.join(' ');

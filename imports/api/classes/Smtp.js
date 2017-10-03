@@ -3,6 +3,7 @@ import npmFS from 'fs';
 
 export default class Smtp {
     static createServer(dataReadyCB, port = 25) {
+        showStatus('Initializing SMTP Server... port:`%s`', port);
         const smtpServer = npmSimpleSmtp.createServer({
             debug: true,
             requireAuthentication: false,
@@ -31,8 +32,8 @@ export default class Smtp {
             if(typeof dataReadyCB === 'function') {
                 dataReadyCB.call(this, connection.emlFile);
             }
-            // callback(new Error('Rejected as spam!')); // reported back to the client
         });
+        showStatus('Successfully initialized SMTP Server.');
     }
     
     static createClient(host = 'localhost', port = 25) {
