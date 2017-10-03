@@ -178,7 +178,6 @@ Reports.propTypes = {
 };
 
 export default createContainer(() => {
-    console.log(Meteor.settings);
     let data = {};
     data[REPORTS.PUSH] = PushNotifDB.find().fetch();
     data[REPORTS.CALLS] = CallsDB.find().fetch();
