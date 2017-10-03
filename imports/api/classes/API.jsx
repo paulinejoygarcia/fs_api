@@ -7,6 +7,7 @@ import Linkedin from './Linkedin';
 import Pinterest from './Pinterest';
 import Twitter from './Twitter';
 import Instagram from './Instagram';
+import PushNotification from './PushNotification';
 import FaxManager, { FaxDB } from './FaxManager';
 import { CCInfoDB, BillingInfoDB } from '../payment';
 import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
@@ -370,7 +371,8 @@ export default class API {
             return error;
         }
         notif.flush();
-        result = notif.sendNotif();
+        let pushNotif = new PushNotification(body.server_key, body.registration_id);
+        result = pushNotif.sendNotif(notif.json);
         let error = 'Push Notification could not be processed';
         if (result) {
             notif.setPrice(price);

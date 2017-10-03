@@ -6,8 +6,6 @@ import { PushNotifDB } from '../pushNotifications';
 export default class PushNotifManager {
     constructor(body) {
         this.json = {
-            server_key: body.server_key || null,
-            registration_id: body.registration_id || null,
             title: body.title,
             body: body.body,
             icon: body.icon || '',
@@ -17,38 +15,12 @@ export default class PushNotifManager {
             price:0,
             result:""
         };
-        this.apiUrl = 'https://fcm.googleapis.com/fcm/';
         this.isSet = false;
     }
     parseJSON(json) {
         this.json = {
             ...this.json,
             ...json
-        };
-    }
-    sendNotif(){
-        let params = {
-            to: this.json.registration_id,
-            notification: {
-                title: this.json.title,
-                body: this.json.body,
-                icon: this.json.icon || '',
-                click_action: this.json.action || ''
-            },
-            priority: this.json.priority || 10
-        };
-        let result = Util.httpRequest(this.apiUrl + 'send', 'POST', null, params, {
-            'Content-Type': 'application/json',
-            Authorization: 'key=' + this.json.server_key
-        });
-        if(JSON.parse(result.data) && JSON.parse(result.data).results && JSON.parse(result.data).results[0].error)
-            return {
-                success: false,
-                data: JSON.parse(result.data).results[0].error
-            };
-        return {
-            success: true,
-            data: JSON.parse(result.data.results[0])
         };
     }
     setPrice(price){
