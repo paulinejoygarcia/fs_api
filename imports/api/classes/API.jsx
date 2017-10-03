@@ -12,6 +12,7 @@ import { CCInfoDB, BillingInfoDB } from '../payment';
 import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
 import SocialCommentManager, { SocialCommentDB } from './SocialCommentManager';
 import SocialPostManager, { SocialPostDB } from './SocialPostManager';
+import PushNotifManager from './PushNotifManager';
 import moment from 'moment';
 import MessageCtrl from './controller/Message';
 import ScreenshotsCtrl from './controller/Screenshot';
@@ -77,7 +78,7 @@ export default class API {
     }
 
     chargeAccount(price) {
-        return server.chargeAccount(this.accountData ? this.accountData.id : null, price);
+        return server.chargeAccount(this.accountData, price);
     }
 
     didOwner(number) {
@@ -258,28 +259,11 @@ export default class API {
                             success: true,
                             code: 200,
                             data: data
-                        }
+                        };
                     case METHOD.POST:
                         body.account_id = this.accountId;
                         body.createdTimestamp = moment().valueOf();
-                        if (!this.isAccountBillable(Meteor.settings.pricing.pushNotification))
-                            return {
-                                success: false,
-                                code: 400,
-                                error: 'Insufficient funds to process request'
-                            };
-                        let chargeResponse = this.chargeAccount(Meteor.settings.pricing.pushNotification);
-                        if (!chargeResponse.success)
-                            return {
-                                success: false,
-                                code: 500,
-                                error: chargeResponse.error
-                            };
-                        return {
-                            success: true,
-                            code: 200,
-                            data: { chargeResponse, PushNotifId: PushNotifDB.insert(body)._str }
-                        };
+                        return this.pushNotif(body);
                         break;
                 }
                 break;
@@ -369,6 +353,49 @@ export default class API {
                 break;
         }
         return { success: false, code: 404, error: 'Invalid request!' };
+    }
+
+    pushNotif(body){
+        let result = null;
+        let price = Meteor.settings.pricing.pushNotification || 0.001;
+        let notif = new PushNotifManager(body);
+        if (!this.isAccountBillable(price)) {
+            const error = {
+                success: false,
+                code: 400,
+                error: 'Insufficient funds to process request'
+            };
+            notif.setResult(error);
+            notif.flush();
+            return error;
+        }
+        notif.flush();
+        result = notif.sendNotif();
+        let error = 'Push Notification could not be processed';
+        if (result) {
+            notif.setPrice(price);
+            notif.setResult(result);
+            notif.flush();
+            if (result.success) {
+                let charge = this.chargeAccount(price);
+                return {
+                    success: charge.success,
+                    code: 200,
+                    data: {
+                        _info: charge.success ? 'Push notification processed successfully' : charge.error,
+                        ...result.data
+                    }
+                };
+            } else {
+                error = result.data
+            }
+        }
+
+        return {
+            success: false,
+            code: 200,
+            data: error
+        };
     }
 
     faxGet(id) {

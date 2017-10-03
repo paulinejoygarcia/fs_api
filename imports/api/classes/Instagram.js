@@ -1,4 +1,4 @@
-import npmInstagram from 'instagram-private-tmq';
+import npmInstagram from 'instagram-private-api';
 import npmFuture from 'fibers/future';
 
 const Client = npmInstagram.V1;
