@@ -3,7 +3,7 @@ import { Meteor } from 'meteor/meteor';
 import moment from 'moment';
 import MM4 from './MM4';
 import { MessageDB } from '../message';
-
+import splitSms from 'split-sms';
 export default class MessageManager {
     constructor(accountId) {
         this.accountId = accountId;
@@ -19,7 +19,7 @@ export default class MessageManager {
             body: "",
             from: "",
             result: null,
-            message_id: null,
+            message_id: Util.genRandomString(8),
             attachment: null,
             to: "12345",
             account_id: accountId || null,

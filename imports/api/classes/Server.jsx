@@ -633,9 +633,14 @@ export default class Server {
                     code: 400,
                     error: 'Insufficient funds'
                 };
-            const app = this.didApp(owner.account_id);
-            if(app.success && app.data.msg_url || app.data.msg_fb_url)
-                this.processRequestUrl(Message.json, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
+            const app = this.didApp(owner.account_id, from);
+            if(app)
+                this.processRequestUrl(Message.json, app.msg_url, app.msg_method, app.msg_fb_url, app.msg_fb_method);
+            else return {
+                success: false,
+                code: 400,
+                error: 'error has occured'
+            };
             let saveMessage = Message.flush();
             if(!saveMessage) return {
                 success: false,
@@ -713,13 +718,12 @@ export default class Server {
     }
 
     smtpReceive(file) {
-        const that = this;
         const mms = MM4.parseMms(file);
         const msgId = mms.messageId;
-        let owner = this.didOwner(mms.from);
+        let message = MessageDB.findOne({message_id: msgId});
+        let owner = this.didOwner(message.from);
         if (MM4.isResponse(mms.messageType)) {
             showDebug('MMS send server response: %s', mms);
-            let message = MessageDB.findOne({message_id: msgId});
             const Message = new MessageManager(owner.account_id);
             Message.parseJSON(message);
             Message.parseJSON(mms);
@@ -739,9 +743,14 @@ export default class Server {
                         code: 400,
                         error: 'Insufficient funds'
                     };
-                const app = this.didApp(owner.account_id);
-                if(app.success && app.data.msg_url || app.data.msg_fb_url)
-                    this.processRequestUrl(Message.json, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
+                const app = this.didApp(owner.account_id, message.from);
+                if(app)
+                    this.processRequestUrl(Message.json, app.msg_url, app.msg_method, app.msg_fb_url, app.msg_fb_method);
+                else return {
+                    success: false,
+                    code: 400,
+                    error: 'error has occured'
+                };
                 let saveMessage = Message.flush();
                 if(!saveMessage) return {
                     success: false,
