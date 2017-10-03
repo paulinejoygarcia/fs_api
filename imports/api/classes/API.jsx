@@ -77,22 +77,11 @@ export default class API {
     }
 
     chargeAccount(price) {
-        return server.chargeAccount(this.accountData, price);
+        return server.chargeAccount(this.accountData ? this.accountData.id : null, price);
     }
 
-    didAccountOwner(number) {
-        let query = 'SELECT dids.accountid as aid, accounts.number as anum FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? ';
-        let result = this.databaseConnection.selectOne(query, [number]);
-        if (result) {
-            return {
-                success: true,
-                data: {
-                    id: result.aid,
-                    accountId: result.anum,
-                }
-            }
-        }
-        return result;
+    didOwner(number) {
+        return server.didOwner(number);
     }
 
     doProcess(method, body, smtpSend, smppSend, processRequestUrl) {
@@ -330,7 +319,7 @@ export default class API {
                 switch (method) {
                     case METHOD.POST:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didOwner);
                             let res = ctrl.insert();
                             if (res.success) res = ctrl.send();
                             return res;
@@ -340,7 +329,7 @@ export default class API {
                         break;
                     case METHOD.GET:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didOwner);
                             return {
                                 success: true,
                                 code: 200,
@@ -364,7 +353,7 @@ export default class API {
                     case METHOD.POST:
                         switch (this.subEndpoint) {
                             case ENDPOINT_ACTION.VIDEO_SCREENSHOT:
-                                const ctrl = new ScreenshotsCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didAccountOwner);
+                                const ctrl = new ScreenshotsCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didOwner);
                                 let res = ctrl.insert();
                                 if (res.success) res = ctrl.send();
                                 return res;
@@ -384,7 +373,13 @@ export default class API {
 
     faxGet(id) {
         if (id) {
-            let fax = FaxDB.findOne({ accountId: this.accountId, uuid: id });
+            let fax = FaxDB.findOne({
+                accountId: this.accountId,
+                $or: [
+                    { faxId: id },
+                    { uuid: id }
+                ]
+            });
             if (fax) {
                 let faxManager = new FaxManager(this.accountId);
                 faxManager.parseJSON(fax);
@@ -414,8 +409,10 @@ export default class API {
     }
 
     faxSender(to, from, files) {
-        let fax = new FaxManager(this.accountId, to, from, 'outbound', files, price);
+        to = to.toString();
+        from = from.toString();
         let price = Meteor.settings.pricing.fax || 0.04;
+        let fax = new FaxManager(this.accountId, to, from, 'outbound', files);
         if (!this.isAccountBillable(price)) {
             let error = {
                 success: false,
@@ -447,7 +444,7 @@ export default class API {
 
         const fid = Util.md5Hash(from + to + Date.now());
         const destName = 'FAX-snd-' + fid + '.tiff';
-        const dest = PATH.UPLOAD + 'tiff/' + destName;
+        const dest = PATH.UPLOAD + destName;
         const convert = server.pdfToTiff(pdfs, dest);
         if (convert.success) {
             const copied = server.scp(dest);
@@ -455,7 +452,7 @@ export default class API {
                 fax.setFaxId(fid);
                 fax.setTIFF(copied);
                 fax.flush();
-                return this.freeswitchConnection.sendFax(record.from, record.to, fid, copied, this.accountData.number);
+                return this.freeswitchConnection.sendFax(from, to, fid, copied, this.accountData.number);
             }
             return {
                 success: false,
@@ -463,12 +460,13 @@ export default class API {
             };
         }
 
-        this.freeswitchConnection.sendFax();
-
         return {
             success: true,
             code: 200,
-            data: 'Fax queued successfully'
+            data: {
+                msg: 'Fax queued successfully',
+                faxId: fid
+            }
         };
     }
 
@@ -571,27 +569,33 @@ export default class API {
     }
 
     socialComment(site, params) {
+        let postId = params.post_id;
+        let comment = params.comment;
         let price = Meteor.settings.pricing.socialComment || 0.002;
-        if (!this.isAccountBillable(price)) {
-            return {
-                success: false,
-                code: 400,
-                error: 'Insufficient funds to process request'
-            };
-        }
+        let socialComment = new SocialCommentManager(this.accountId, site, postId, comment);
 
         let account = SocialAccountDB.findOne({ accountId: this.accountId });
         if (!account) {
-            return {
+            const error = {
                 success: false,
                 code: 404,
                 error: 'Social account record not found'
             };
+            socialComment.setResult(error);
+            socialComment.flush();
+            return error;
         }
 
-        let postId = params.post_id;
-        let comment = params.comment;
-        let socialComment = new SocialCommentManager(this.accountId, site, postId, comment);
+        if (!this.isAccountBillable(price)) {
+            const error = {
+                success: false,
+                code: 400,
+                error: 'Insufficient funds to process request'
+            };
+            socialComment.setResult(error);
+            socialComment.flush();
+            return error;
+        }
         socialComment.flush();
 
         let result = null;
@@ -641,26 +645,31 @@ export default class API {
     }
 
     socialPost(site, params) {
+        let result = null;
         let price = Meteor.settings.pricing.socialPost || 0.003;
-        if (!this.isAccountBillable(price)) {
-            return {
-                success: false,
-                code: 400,
-                error: 'Insufficient funds to process request'
-            };
-        }
-
+        let socialPost = new SocialPostManager(this.accountId, site);
         let account = SocialAccountDB.findOne({ accountId: this.accountId });
         if (!account) {
-            return {
+            const error = {
                 success: false,
                 code: 404,
                 error: 'Social account record not found'
             };
+            socialPost.setResult(error);
+            socialPost.flush();
+            return error;
         }
-
-        let result = null;
-        let socialPost = new SocialPostManager(this.accountId, site);
+        if (!this.isAccountBillable(price)) {
+            const error = {
+                success: false,
+                code: 400,
+                error: 'Insufficient funds to process request'
+            };
+            socialPost.setResult(error);
+            socialPost.flush();
+            return error;
+        }
+        socialPost.flush();
 
         switch (site) {
             case ENDPOINT_ACTION.SOCIAL_FB:

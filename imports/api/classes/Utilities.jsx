@@ -360,7 +360,6 @@ class Utilities {
         return crypto.createHash('md5').update(s).digest('hex');
     }
 
-
     showGritter(title, text, status) {
         if (Meteor.isClient) {
             $.gritter.add({

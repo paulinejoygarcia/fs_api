@@ -2,9 +2,14 @@ import npmFuture from 'fibers/future';
 import npmSmpp from 'smpp';
 
 export default class Smpp {
-    constructor(ip, port) {
+    constructor(ip, port, systemId, password, systemType) {
+        showStatus('Connecting to SMPP Server... ip:`%s`', ip || 'localhost');
         this.session = npmSmpp.connect('smpp://' + ip + ':' + port);
-        this.connected = false;
+        this.connected = this.bindTransceiver(systemId, password, systemType);
+    }
+
+    isConnected() {
+        return this.connected;
     }
     
     bindTransceiver(systemId, password, systemType) {
@@ -15,14 +20,17 @@ export default class Smpp {
         };
         let fut = new npmFuture();
         let that = this;
-        that.session.bind_transceiver(params, function(pdu) {
-            if(pdu.command_status == 0) {
-                that.connected = true;
-                that.onEnquireLink();
-                fut.return(true);
-            } else fut.return(false);
-        });
-        return fut.wait();
+        if (that.session) {
+            that.session.bind_transceiver(params, function (pdu) {
+                if (pdu.command_status == 0) {
+                    showStatus('Successfully connected to SMPP Server.');
+                    that.onEnquireLink();
+                    fut.return(true);
+                } else fut.return(false);
+            });
+            return fut.wait();
+        }    
+        return false;
     }
     
     submitSm(from, to, message) {

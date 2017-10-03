@@ -7,28 +7,25 @@ import XmlParser from './XmlParser';
 export default class Freeswitch {
     constructor(ip, port, password) {
         const that = this;
-        that._ip = ip;
-        that._port = port;
-        that._password = password;
-        that._connected = false;
+        that.connected = false;
         that.astppDB = null;
 
         let fut = new npmFuture();
         showStatus('Connecting to FreeSWITCH Server... ip:`%s`', ip || 'localhost');
-        that._connection = new npmESL.Connection(this._ip, this._port, this._password, function () {
+        that.connection = new npmESL.Connection(ip, port, password, function () {
             showStatus('Successfully connected to FreeSWITCH Server.');
-            that._connection.events('json', 'all');
+            that.connection.events('json', 'all');
 
             fut.return(true);
         });
-        that._connection.on('error', function (ex) {
+        that.connection.on('error', function (ex) {
             fut.return(false);
         });
-        that._connected = fut.wait();
+        that.connected = fut.wait();
     }
 
     isConnected() {
-        return this._connected;
+        return this.connected;
     }
 
     setAstppDB(wrapper) {
@@ -58,8 +55,11 @@ export default class Freeswitch {
             let query = `select * from pricelists WHERE id = ${id} AND status = 0`;
             return this.astppDB.selectOne(query);
         });
-        if (this.accountData) {
-            let rateCardId = this.accountData.pricelist_id;
+
+        let queryAcc = "SELECT * FROM accounts WHERE number = ?";
+        let accountData = this.astppDB.selectOne(queryAcc, accountId);
+        if (accountData) {
+            let rateCardId = accountData.pricelist_id;
             let numberLoopStr = numberLoop(destinationNumber);
             let rate = getRate(numberLoopStr, rateCardId);
             if (rate) {
@@ -135,17 +135,18 @@ export default class Freeswitch {
         let carrierRates = this.getAccountCarrierRates(accountId, destinationNumber);
         let outboundInfo = carrierRates.map(cr => {
             let bg = this.getAccountBridgeGateway(cr, destinationNumber)
-            gateways.push(bg.gateway);
+            if (gateways.indexOf(bg.gateway) == -1)
+                gateways.push(bg.gateway);
         });
         return gateways.join('|');
     }
 
-    sendFax(from, to, id, files, accountId) {
+    sendFax(from, to, id, file, accountId) {
         from = from.replace(/\D/g, '');
         to = to.replace(/\D/g, '');
-        if (this._connected && from && to && id && file) {
-            let recipient = this.getCallOutboundGateway(to, accountId);
-            if (!recipient.success) return recipient;
+        if (this.connected && from && to && id && file && accountId) {
+            let recipient = this.getCallOutboundGateway(accountId, to);
+            if (!recipient) return recipient;
 
             let params = [];
             let vars = [];
@@ -159,10 +160,11 @@ export default class Freeswitch {
             vars.push(`execute_on_fax_success='lua process_fax.lua ${[1, 1, id, from, to, file, accountId].join(' ')}'`);
             vars.push(`execute_on_fax_failure='lua process_fax.lua ${[0, 1, id, from, to, file, accountId].join(' ')}'`);
 
-            params.push(`{${vars.join(',')}}${recipient.data}`);
+            params.push(`{${vars.join(',')}}${recipient}`);
             params.push(`&txfax($$\{temp_dir\}/${file})`);
 
-            this._connection.sendRecv(`api originate ${params.join(' ')}`);
+            showNotice('sendFax: %s', `api originate ${params.join(' ')}`);
+            this.connection.sendRecv(`api originate ${params.join(' ')}`);
             return {
                 success: true,
                 data: 'Fax queued'
@@ -183,7 +185,7 @@ export default class Freeswitch {
             direction: params.call_direction,
         };
 
-        const xml = this.processRequestUrl(v, callUrl, callMethod, callFbUrl, callFbMethod, params.account_code);
+        const xml = server.processRequestUrl(v, callUrl, callMethod, callFbUrl, callFbMethod, params.account_code);
         return {
             success: true,
             data: xml ? xml : ''
@@ -203,7 +205,7 @@ export default class Freeswitch {
         const file = params.file;
         const transferredPages = params.transferred_pages;
         const totalPages = params.total_pages;
-        const price = parseInt(transferredPages) * Meteor.settings.pricing.fax;
+        const price = parseInt(transferredPages) * (Meteor.settings.pricing.fax || 0.04);
         const faxOutbound = params.is_send == '1';
 
         let fax = null;
@@ -218,15 +220,15 @@ export default class Freeswitch {
             fax.parseJSON(doc);
             fax.setTransferredPages(transferredPages);
             fax.setTotalPages(totalPages);
-            fax.setUUID(uuidid);
+            fax.setUUID(uuid);
 
             if (success) {
                 fax.setStatus(1);
                 fax.setPrice(price);
-            } else {
-                fax.setResult({ code: code, text: text });
             }
+            fax.setResult({ code: code, text: text });
             fax.flush();
+            showNotice('Outbound Fax Status: %s', fax.json);
         } else {
             let query = "SELECT account_id FROM accounts WHERE number = ?";
             let acc = this.astppDB.selectOne(query, accountId);
@@ -234,27 +236,25 @@ export default class Freeswitch {
             fax.setTransferredPages(transferredPages);
             fax.setTotalPages(totalPages);
             fax.setFaxId(id);
-            fax.setUUID(uuidid);
+            fax.setUUID(uuid);
 
             if (success) {
                 fax.setStatus(1);
                 fax.setPrice(price);
 
-                const file = `/tmp/${file}`;
-                const tiffPath = `${PATH.UPLOAD}tiff/`;
-                const downloaded = Util.scp(file, 0, tiffPath, 1);
+                const downloaded = server.scp(`/tmp/${file}`, 0, PATH.UPLOAD, 1);
                 if (downloaded)
                     fax.setTIFF(file);
-            } else {
-                fax.setResult({ code: code, text: text });
             }
+            fax.setResult({ code: code, text: text });
             fax.flush();
+            showNotice('Inbound Fax: %s', fax.json);
         }
 
         if (fax) {
             let queryAcc = "SELECT * FROM accounts WHERE number = ?";
             let accountData = this.astppDB.selectOne(queryAcc, accountId);
-            server.accountCharge(accountData, price, fax.json.accountId);
+            server.chargeAccount(accountData, price, fax.json.accountId);
 
             let query = "SELECT fax_url, fax_method, fax_fb_url, fax_fb_method FROM fs_applications fa JOIN dids d ON fa.id = d.fs_app_id WHERE d.number = ? LIMIT 1";
             let app = this.astppDB.selectOne(query, faxOutbound ? from : to);
@@ -275,7 +275,7 @@ export default class Freeswitch {
                 tiff: fax.json.tiff,
             };
 
-            this.processRequestUrl(v, app.fax_url, app.fax_method, app.fax_fb_url, app.fax_fb_method, fax.json.accountId);
+            server.processRequestUrl(v, app.fax_url, app.fax_method, app.fax_fb_url, app.fax_fb_method, accountId);
 
             return {
                 success: true
@@ -284,21 +284,5 @@ export default class Freeswitch {
         return {
             success: false
         };
-    }
-
-    processRequestUrl(params, url, method = 'get', fallback, fb_method = 'get', accountId = null) {
-        let xml = {};
-        if (url && method) {
-            xml = Util.httpRequest(url, method, params);
-            if (xml.statusCode != 200 && fallback && fb_method)
-                xml = Util.httpRequest(fallback, fb_method, params);
-        }
-
-        if (x = xml.data) {
-            var xp = new XmlParser(x, accountId);
-            xp.setFreeswitch(this);
-            const parsed = xp.process();
-            if (parsed.success) return parsed.data;
-        }
     }
 }
