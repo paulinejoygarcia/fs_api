@@ -6,6 +6,7 @@ import MM4 from './MM4';
 import Smpp from './Smpp';
 import Smtp from './Smtp';
 import Util from './Utilities';
+import XmlParser from './XmlParser';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import moment from 'moment';
@@ -170,6 +171,7 @@ export default class Server {
                 let result = null;
                 let api = new API(accountSid, auth.api, auth.secret, data.body.accessCode, ipAddress);
                 api.setDBConnection(this.dbConnection);
+                api.setFSConnection(this.freeswitch);
 
                 if (endpoint !== ENDPOINT.AUTH && !api.checkAccessCode()) {
                     Util.affixResponse(response, 403, {
@@ -718,9 +720,9 @@ export default class Server {
         }
 
         if (xml.data) {
-            let xp = new XmlParser(xml.data, accountId);
+            let xp = new XmlParser(accountId);
             xp.setFreeswitch(this.freeswitch);
-            const parsed = xp.process();
+            const parsed = xp.process(xml.data);
             if (parsed.success) return parsed.data;
         }
     }
@@ -753,7 +755,11 @@ export default class Server {
     processFreeswitchRequest(params, request, response, next) {
         let sections = ['dialplan', 'fax_callback'];
         let section = params.section;
-        let ipAddress = request.connection.remoteAddress;
+        let ipAddress = request.headers['x-forwarded-for'] ||
+            request.connection.remoteAddress ||
+            request.socket.remoteAddress ||
+            request.connection.socket.remoteAddress;
+
         if (ipAddress != Meteor.settings.freeswitch.ip && ipAddress != '127.0.0.1') {
             Util.affixResponse(response, 401, {
                 'Content-Type': 'application/json',
@@ -766,15 +772,24 @@ export default class Server {
                 'Allow': 'POST',
                 'Content-Type': 'application/json',
             }, JSON.stringify({ success: false, error: 'Method not allowed!' }));
+            return;
         }
 
         if (sections.indexOf(section) === -1) {
             Util.affixResponse(response, 404, {
                 'Content-Type': 'application/json',
             }, JSON.stringify({ success: false, error: `Endpoint not found: ${section}` }));
+            return;
         }
 
-        let body = response.body;
+        if (!this.freeswitch) {
+            Util.affixResponse(response, 400, {
+                'Content-Type': 'application/json',
+            }, JSON.stringify({ success: false, error: `Freeswitch server down` }));
+            return;
+        }
+
+        let body = request.body;
         let retval = {
             success: true,
             code: 200,
@@ -782,7 +797,7 @@ export default class Server {
         };
 
         switch (section) {
-            case 'diaplan':
+            case 'dialplan':
                 retval = this.freeswitch.dialplan(body);
                 break;
             case 'fax_callback':
