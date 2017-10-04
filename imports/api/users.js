@@ -38,7 +38,11 @@ if (Meteor.isServer) {
         let addedCustomer = customer.customerAdd();
         if (!addedCustomer)
             throw new Meteor.Error("500", "Problem on saving ASTPP account");
-        Meteor.users.update({ _id: id }, { $set: { "profile.astpp": addedCustomer } });
+        Meteor.users.update({ _id: id }, { $set: {
+            "profile.astpp": addedCustomer.id,
+            "profile.api": addedCustomer.api,
+            "profile.secret": addedCustomer.secret,
+        } });
         return addedCustomer;
     };
     Accounts.validateLoginAttempt((data) => {

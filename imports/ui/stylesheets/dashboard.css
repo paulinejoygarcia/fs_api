@@ -1,0 +1,39 @@
+.mb20{
+    margin-bottom:20px;
+}
+.section-header {
+    margin-bottom: 30px;
+}
+.section-header h2 {
+    font-size: 22px;
+    font-weight: 500;
+    margin: 20px auto 5px;
+    text-align: center;
+    text-transform: uppercase;
+}
+.section-header h6 {
+    color: #999;
+    font-size: 12px;
+    font-weight: 300;
+    text-align: center;
+    text-transform: uppercase;
+}
+.feature {
+    box-shadow: 3px 3px 4px -3px #ececec;
+    margin-bottom: 30px;
+    padding:10px 15px;
+}
+.feature-icon i {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+.feature h5 {
+    font-size: 14px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.feature p {
+    color: #111;
+    font-size: 14px;
+    line-height: 20px;
+}
