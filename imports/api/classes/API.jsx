@@ -211,7 +211,7 @@ export default class API {
                     'uniqueid as call_id' +
                     ' FROM cdrs WHERE accountid = ' +
                     '(SELECT id from accounts WHERE account_id = ?)' +
-                    (this.extEndpoint?" AND uniqueid = '"+this.extEndpoint+"'":"") +
+                    (this.extEndpoint ? " AND uniqueid = '" + this.extEndpoint + "'" : "") +
                     ' ORDER BY callstart DESC' +
                     (body.limit ? ' LIMIT ' + body.limit : '');
                 this.databaseConnection.select(query, [this.accountId]).forEach((accInfo) => {
@@ -720,6 +720,11 @@ export default class API {
                     result = ig.postImage(PATH.UPLOAD + params.image.filename, params.caption);
                 } else if (params.video && params.cover_photo) {
                     result = ig.postVideo(PATH.UPLOAD + params.video.filename, params.caption, PATH.UPLOAD + params.cover_photo.filename);
+                } else {
+                    result = {
+                        success: false,
+                        data: 'You must include an image or a video in your post'
+                    };
                 }
                 break;
             case ENDPOINT_ACTION.SOCIAL_LI:
