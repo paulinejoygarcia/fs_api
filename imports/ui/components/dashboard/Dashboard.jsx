@@ -8,12 +8,25 @@ import '../../stylesheets/dashboard';
 class Dashboard extends Component {
     constructor(props) {
         super(props);
+        this.state ={
+            showSecret: false
+        };
     }
     renderInfo(){
         return (
             <div className="col-md-12">
                 <div className="widget p-4">
                     <h5 className="mb-4">Account Summary</h5>
+                    API KEY: {this.props.user?this.props.user.profile.api:""} <br />
+                    API SECRET:&nbsp;
+                    <button className="btn btn-default btn-sm" onClick={()=>{
+                        this.setState({showSecret:!this.state.showSecret});
+                    }}>
+                        <i className="fa fa-eye" aria-hidden="true" />
+                    </button>&nbsp;
+                    {(this.props.user && this.state.showSecret)?this.props.user.profile.secret:""}
+                    {(this.props.user && !this.state.showSecret)?"****************************":""}
+                    <br />
                     <hr />
                     <h5 className="mb-4">Products</h5>
                     <hr />
@@ -26,7 +39,7 @@ class Dashboard extends Component {
                                 </div>
                                 <h5>Fax</h5>
                                 <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                                    telephonic transmission of scanned printed material
                                 </p>
                             </div>
 
@@ -36,7 +49,7 @@ class Dashboard extends Component {
                                 </div>
                                 <h5>SMS</h5>
                                 <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                                    text messaging service
                                 </p>
                             </div>
 
@@ -46,7 +59,7 @@ class Dashboard extends Component {
                                 </div>
                                 <h5>MMS</h5>
                                 <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                                    send messages that include multimedia content
                                 </p>
                             </div>
                         </div>
@@ -58,7 +71,7 @@ class Dashboard extends Component {
                                 </div>
                                 <h5>Push Notification</h5>
                                 <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                                    message that pops up on a device
                                 </p>
                             </div>
 
@@ -68,7 +81,7 @@ class Dashboard extends Component {
                                 </div>
                                 <h5>Video</h5>
                                 <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                                    see and hear the person you're talking to on your device and lets them see and hear you
                                 </p>
                             </div>
 
@@ -78,8 +91,7 @@ class Dashboard extends Component {
                                 </div>
                                 <h5>Voice</h5>
                                 <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-                                </p>
+                                    hear the person you're talking to on your device and lets them hear you</p>
                             </div>
 
                             <div className="feature">
@@ -88,7 +100,7 @@ class Dashboard extends Component {
                                 </div>
                                 <h5>Social Networks</h5>
                                 <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                                    use to build social networks or social relations with other people
                                 </p>
                             </div>
                         </div>
@@ -98,7 +110,6 @@ class Dashboard extends Component {
         );
     }
     render() {
-        console.log(this.props.user);
         return (
             <div className="row">
                 <div className="col-md-12">
