@@ -49,6 +49,13 @@ export default class Server {
         return balance;
     }
 
+    isAccountBillable(accountData, price) {
+        if (this.getAccountBalance(accountData) >= parseFloat(price)) {
+            return true;
+        }
+        return false;
+    }
+
     updateAccountBalance(accountData, amount, paymentType = 'debit') {
         if (this.dbConnection && accountData && parseFloat(amount)) {
             let balance = parseFloat(accountData.balance) - parseFloat(amount);
@@ -369,7 +376,38 @@ export default class Server {
                             body: Joi.string(true),
                             attachment: Joi.array(Joi.file('files', false), 1)
                         };
-                        break;
+                        if(params.sub === ENDPOINT_ACTION.MESSAGE_SMS) {
+                            if (retval.body.files.length > 0) {
+                                retval.code = 400;
+                                retval.error = 'Sms does not accept file attachment';
+                                retval.success = false;
+                                return retval;
+                            }
+                        }else{
+                            let files = [];
+                            if (retval.body.files) {
+                                retval.body.files.forEach(file => {
+                                    if (file.fieldname == 'files') {
+                                        let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                        fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                        files.push({
+                                            filename: localpath,
+                                            encoding: file.encoding,
+                                            mime_type: file.mimetype
+                                        })
+                                    }
+                                });
+                                retval.body.attachment = files;
+                            }
+                            if(!retval.body.attachment || retval.body.files.length == 0){
+                                retval.code = 400;
+                                retval.error = '`files` is required';
+                                retval.success = false;
+                                return retval;
+                            }
+                            joiSchema.attachment = Joi.array(Joi.file('files', false), 1);
+                            break;
+                        }
                 }
                 break;
             case ENDPOINT.VIDEO:
