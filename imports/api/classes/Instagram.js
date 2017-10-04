@@ -1,4 +1,4 @@
-import npmInstagram from 'instagram-private-api';
+import npmInstagram from '../public/instagram-api';
 import npmFuture from 'fibers/future';
 
 const Client = npmInstagram.V1;
@@ -11,25 +11,25 @@ export default class Instagram {
         self.device = new Client.Device(username);
         self.storage = new Client.CookieMemoryStorage();
     }
-    
+
     createSession(cb) {
-        if(!this.device && !this.storage) return;
+        if (!this.device && !this.storage) return;
         Client.Session.create(this.device, this.storage, this.username, this.password).then(cb);
     }
-    
+
     postImage(image, caption) {
         let fut = new npmFuture();
         this.createSession(function (session) {
             Client.Upload.photo(session, image)
-                .then(function(upload) {
+                .then(function (upload) {
                     return Client.Media.configurePhoto(session, upload.params.uploadId, caption);
                 })
-                .then(function(medium) {
+                .then(function (medium) {
                     fut.return({
                         success: true,
-                        data: {id: medium.id}
+                        data: { id: medium.id }
                     });
-                }).catch(function(err) {
+                }).catch(function (err) {
                     fut.return({
                         success: false,
                         data: err.message
@@ -38,20 +38,20 @@ export default class Instagram {
         });
         return fut.wait();
     }
-    
+
     postVideo(video, caption, cover) {
         let fut = new npmFuture();
         this.createSession(function (session) {
             Client.Upload.video(session, video, cover)
-                .then(function(upload) {
+                .then(function (upload) {
                     return Client.Media.configureVideo(session, upload.uploadId, caption, upload.durationms);
                 })
-                .then(function(medium) {
+                .then(function (medium) {
                     fut.return({
                         success: true,
-                        data: {id: medium.id}
+                        data: { id: medium.id }
                     });
-                }).catch(function(err) {
+                }).catch(function (err) {
                     fut.return({
                         success: false,
                         data: err.message
