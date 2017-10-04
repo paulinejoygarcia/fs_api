@@ -14,6 +14,8 @@ import npmScp from 'scp2';
 import future from 'fibers/future';
 import fiber from 'fibers';
 import stream from 'stream';
+import MessageManager from './MessageManager';
+import { MessageDB } from '../message';
 import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
 
 export default class Server {
@@ -613,16 +615,54 @@ export default class Server {
     }
 
     smppReceive(from, to, message) {
-        //this confirms that a new sms was received
+        let owner = this.didOwner(to);
+        if(!owner)return {
+            success: false,
+            code: 404,
+            error: 'Owner not found'
+        };
+        const Message = new MessageManager(owner.account_id);
+        Message.parseJSON({
+            from: from,
+            to: to,
+            body: message
+        });
+        let price = Message.getPrice();
+        let query = "SELECT * FROM `accounts` WHERE `account_id`=?";
+        let result = this.dbConnection.selectOne(query, [owner.account_id]);
+        if (result) {
+            this.accountData = result;
+            if(!this.isAccountBillable(result, price))
+                return {
+                    success: false,
+                    code: 400,
+                    error: 'Insufficient funds'
+                };
+            const app = this.didApp(owner.account_id, from);
+            if(!app)return {
+                success: false,
+                code: 400,
+                error: 'error has occurred when processing request URL '
+            };
+            let v = Message.json;
+            delete v._id;
+            delete v.result;
+                this.processRequestUrl(v, app.msg_url, app.msg_method, app.msg_fb_url, app.msg_fb_method);
 
-        //TODO: 
-        //get owner of the did number (didOwner function)
-        //get number of parts the message body has to calculate total sms price (use getParts)
-        //check if account is billable, if not set result to insufficient funds
-        //get application related to the did number (didApp function)
-        //construct object to be sent to the msg_url of the application
-        //charge the account (use manager class when inserting record)
-        //send the constructed object to msg_url using processRequestUrl
+            let saveMessage = Message.flush();
+            if(!saveMessage) return {
+                success: false,
+                code: 400,
+                error: 'error has occurred when saving message'
+            };
+            if(this.updateAccountBalance(price, "debit")) {
+                return {
+                    success: true,
+                    code: 200,
+                    data: 'Success'
+                };
+            }
+        }
     }
 
     smtpSend(from, to, att, body) {
@@ -686,28 +726,57 @@ export default class Server {
     }
 
     smtpReceive(file) {
-        const that = this;
         const mms = MM4.parseMms(file);
+        const msgId = mms.messageId;
+        let message = MessageDB.findOne({message_id: msgId});
+        let owner = this.didOwner(message.from);
+        if(!owner)return{
+            success: false,
+            code: 400,
+            error: 'Owner Not Found'
+        };
+        const Message = new MessageManager(owner.account_id);
+        Message.parseJSON(message);
         if (MM4.isResponse(mms.messageType)) {
             showDebug('MMS send server response: %s', mms);
-            //this confirms that mms send is successful
-
-            //TODO:
-            //get related document from mongo db (use manager class when updating record)
-            //set result object
-            //set message id
-            //update document
+            Message.flush();
         } else if (MM4.isRequest(mms.messageType) && mms.attachment) {
             showDebug('MMS received: %s', mms);
-            //this confirms that a new mms was received
-
-            //TODO:
-            //get owner of the did number (didOwner function)
-            //check if account is billable, if not set result to insufficient funds
-            //get application related to the did number (didApp function)
-            //construct object to be sent to the msg_url of the application
-            //charge the account (use manager class when inserting record)
-            //send the constructed object to msg_url using processRequestUrl
+            let price = Message.getPrice();
+            let query = "SELECT * FROM `accounts` WHERE `account_id`=?";
+            let result = this.dbConnection.selectOne(query, [owner.account_id]);
+            if (result) {
+                this.accountData = result;
+                if(!this.isAccountBillable(result, price))
+                    return {
+                        success: false,
+                        code: 400,
+                        error: 'Insufficient funds'
+                    };
+                const app = this.didApp(owner.account_id, message.from);
+                if(!app)return {
+                    success: false,
+                    code: 404,
+                    error: 'error has occurred app not found'
+                };
+                let v = Message.json;
+                delete v._id;
+                delete v.result;
+                this.processRequestUrl(v, app.msg_url, app.msg_method, app.msg_fb_url, app.msg_fb_method);
+                let saveMessage = Message.flush();
+                if(!saveMessage) return {
+                    success: false,
+                    code: 400,
+                    error: 'error has occurred when processing request URL'
+                };
+                if(this.updateAccountBalance(price, "debit")) {
+                    return {
+                        success: true,
+                        code: 200,
+                        data: 'Success'
+                    };
+                }
+            }
         }
     }
 
