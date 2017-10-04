@@ -31,7 +31,7 @@ export default class PushNotification {
         } else
             return {
                 success: false,
-                data: null
+                data: result
             };
         return {
             success: true,
