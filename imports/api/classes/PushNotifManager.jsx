@@ -4,8 +4,9 @@ import moment from 'moment';
 import { PushNotifDB } from '../pushNotifications';
 
 export default class PushNotifManager {
-    constructor(body) {
+    constructor(body,accId) {
         this.json = {
+            account_id: accId,
             title: body.title,
             body: body.body,
             icon: body.icon || '',

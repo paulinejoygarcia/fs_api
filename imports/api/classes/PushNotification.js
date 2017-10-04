@@ -21,21 +21,22 @@ export default class PushNotification {
             'Content-Type': 'application/json',
             Authorization: 'key=' + this.server_key
         });
-        if(result.data){
-            let parsedResult = JSON.parse(result.data);
-            if(parsedResult && parsedResult.results && parsedResult.results[0].error)
+        if(result.statusCode === 200) {
+            let pp = JSON.parse(result.data);
+            if(pp.success) {
                 return {
-                    success: false,
-                    data: parsedResult.results[0].error
+                    success: true,
+                    data: pp.results[0]
                 };
-        } else
+            }
             return {
                 success: false,
-                data: result
+                data: pp.results[0]['error']
             };
+        }
         return {
-            success: true,
-            data: JSON.parse(result.data)?JSON.parse(result.data).results[0]:{}
+            success: false,
+            data: 'Unable to send notification'
         };
     }
 

@@ -237,7 +237,8 @@ export default class API {
                         let queryPush = { account_id: this.accountId };
                         let optionsPush = { sort: { createdTimestamp: -1 } };
                         if (this.subEndpoint)
-                            queryPush._id = new Mongo.ObjectID(this.subEndpoint);
+                            queryPush._id = this.subEndpoint.match(/^[0-9a-fA-F]{24}$/)?
+                                new Mongo.ObjectID(this.subEndpoint):this.subEndpoint;
                         if (body.limit)
                             optionsPush.limit = parseInt(body.limit);
                         PushNotifDB.find(queryPush, optionsPush).fetch().forEach((PushNotif) => {
@@ -264,7 +265,7 @@ export default class API {
                     case METHOD.POST:
                         body.account_id = this.accountId;
                         body.createdTimestamp = moment().valueOf();
-                        return this.pushNotif(body);
+                        return this.pushNotif(body,this.accountId);
                         break;
                 }
                 break;
@@ -356,10 +357,10 @@ export default class API {
         return { success: false, code: 404, error: 'Invalid request!' };
     }
 
-    pushNotif(body){
+    pushNotif(body,accId){
         let result = null;
         let price = Meteor.settings.pricing.pushNotification || 0.001;
-        let notif = new PushNotifManager(body);
+        let notif = new PushNotifManager(body,accId);
         if (!this.isAccountBillable(price)) {
             const error = {
                 success: false,
