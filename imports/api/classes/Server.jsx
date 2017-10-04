@@ -644,6 +644,7 @@ export default class Server {
                     result: charge.data
                 }
             };
+            msgMngr.setMessageId(`${Util.genRandomString(10)}-${Date.now()}`);
             msgMngr.setResult(result);
             msgMngr.flush();
             if (!result.success)

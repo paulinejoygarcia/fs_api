@@ -52,6 +52,10 @@ export default class MessageManager {
         return this.json.price;
     }
 
+    setMessageId(id) {
+        this.json.message_id = id;
+    }
+
     setResult(result) {
         this.json.result = result;
     }
@@ -65,6 +69,7 @@ export default class MessageManager {
             body: this.json.body,
             price: this.json.price,
             result: this.json.result,
+            messageId: this.json.message_id,
             createdDt: moment(this.json.createdDt).format('YYYY-MM-DD HH:mm:ss')
         };
         if (this.json.attachment)
