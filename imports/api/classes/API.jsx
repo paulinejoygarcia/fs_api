@@ -15,8 +15,6 @@ import SocialCommentManager, { SocialCommentDB } from './SocialCommentManager';
 import SocialPostManager, { SocialPostDB } from './SocialPostManager';
 import PushNotifManager from './PushNotifManager';
 import moment from 'moment';
-import MessageCtrl from './controller/Message';
-import ScreenshotsCtrl from './controller/Screenshot';
 import { PushNotifDB } from '../pushNotifications';
 
 export default class API {
@@ -305,22 +303,14 @@ export default class API {
                 switch (method) {
                     case METHOD.POST:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didOwner);
-                            let res = ctrl.insert();
-                            if (res.success) res = ctrl.send();
-                            return res;
+
                         } catch (err) {
                             console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
                         }
                         break;
                     case METHOD.GET:
                         try {
-                            const ctrl = new MessageCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didOwner);
-                            return {
-                                success: true,
-                                code: 200,
-                                data: ctrl.list()
-                            };
+
                         } catch (err) {
                             console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
                         }

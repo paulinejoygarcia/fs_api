@@ -1,6 +1,7 @@
 import API from './API';
 import Joi from './Joi';
 import Freeswitch from './Freeswitch';
+import MessageManager from './MessageManager';
 import MySqlWrapper from './MySqlWrapper';
 import MM4 from './MM4';
 import Smpp from './Smpp';
@@ -83,7 +84,7 @@ export default class Server {
 
     didOwner(number) {
         if (this.dbConnection && number) {
-            let query = 'SELECT dids.accountid as aid, accounts.number as number, accounts.account_id as account_id FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? LIMIT 1';
+            let query = 'SELECT accounts.* FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? LIMIT 1';
             return this.dbConnection.selectOne(query, [number]);
         }
     }
@@ -613,16 +614,56 @@ export default class Server {
     }
 
     smppReceive(from, to, message) {
-        //this confirms that a new sms was received
+        let accountData = this.didOwner(to);
+        if (!accountData)
+            return {
+                success: false,
+                code: 404,
+                error: 'Account not found'
+            };
+        const msgMngr = new MessageManager(accountData.account_id, from, to, message);
+        let price = msgMngr.calculatePrice();
+        if (accountData) {
+            if (!this.isAccountBillable(accountData, price)) {
+                let error = {
+                    success: false,
+                    code: 400,
+                    error: 'Insufficient funds'
+                };
+                msgMngr.setResult(error);
+                msgMngr.flush();
+                return error;
+            }
 
-        //TODO: 
-        //get owner of the did number (didOwner function)
-        //get number of parts the message body has to calculate total sms price (use getParts)
-        //check if account is billable, if not set result to insufficient funds
-        //get application related to the did number (didApp function)
-        //construct object to be sent to the msg_url of the application
-        //charge the account (use manager class when inserting record)
-        //send the constructed object to msg_url using processRequestUrl
+            let charge = this.chargeAccount(accountData, price);
+            let result = {
+                success: charge.success,
+                code: 200,
+                data: {
+                    _info: charge.success ? 'Message received' : charge.error,
+                    result: charge.data
+                }
+            };
+            msgMngr.setResult(result);
+            msgMngr.flush();
+            if (!result.success)
+                return;
+
+            const app = this.didApp(accountData.id, to);
+            if (!app) {
+                let error = {
+                    success: false,
+                    code: 400,
+                    error: 'Application not found, could not process message callback'
+                };
+                msgMngr.setResult(error);
+                msgMngr.flush();
+                return error;
+            }
+            let parameters = msgMngr.toApiJson();
+            this.processRequestUrl(parameters, app.msg_url, app.msg_method, app.msg_fb_url, app.msg_fb_method);
+            return result;
+        }
     }
 
     smtpSend(from, to, att, body) {
