@@ -7,7 +7,6 @@ export default class PushNotification {
         this.registration_id = registration_id;
     }
     sendNotif(json){
-        console.log(json.action);
         let params = {
             to: this.registration_id,
             notification: {
