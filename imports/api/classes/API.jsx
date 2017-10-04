@@ -376,11 +376,14 @@ export default class API {
         result = pushNotif.sendNotif(notif.json);
         let error = 'Push Notification could not be processed';
         if (result) {
-            notif.setPrice(price);
             notif.setResult(result);
             notif.flush();
             if (result.success) {
                 let charge = this.chargeAccount(price);
+                if(charge.success){
+                    notif.setPrice(price);
+                    notif.flush();
+                }
                 return {
                     success: charge.success,
                     code: 200,
