@@ -154,6 +154,7 @@ export default class ASTPPCustomer {
         this.creditLimit = this.addCalculateCurrency(this.creditLimit, '', '', false, false);
         let api = this.randomStr(20);
         let accountId = Math.floor(Math.pow(10, 12-1) + Math.random() * 9 * Math.pow(10, 12-1));
+        let secret = new Buffer(this.XoR(api, accountId)).toString('base64');
         let data = {
             number: this.findUniqRendnoAccno(10, 'number', 'accounts', "", 1),
             country_id: this.json.countryId,
@@ -167,7 +168,7 @@ export default class ASTPPCustomer {
             account_id: accountId,
             email:this.json.email,
             api: api,
-            secret: new Buffer(this.XoR(api, accountId)).toString('base64'),
+            secret: secret,
             pin: this.json.pin,
         };
         let invoiceConfig = null;
@@ -199,6 +200,6 @@ export default class ASTPPCustomer {
             invoiceConfig = [{'accountid':lastId,'company_name':"", 'address':"", 'city':"", 'province':"", 'country':"", 'zipcode':"", 'telephone':"", 'emailaddress':this.json.email}];
             this.json.dbConnection.insert('invoice_conf',invoiceConfig);
         }
-        return (lastId === 0 || lastId)?accountId:false;
+        return (lastId === 0 || lastId)?{id:accountId,api,secret}:false;
     }
 }
