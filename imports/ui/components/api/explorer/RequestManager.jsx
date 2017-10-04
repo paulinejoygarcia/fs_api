@@ -46,24 +46,26 @@ class RequestManager extends Component {
                         hasError = true;
                     }
                 });
-                if (hasError)
+                if (hasError) {
+                    this.setState({ isProcessing: false });
                     return;
+                }
             }
 
             if (this.props.idRequired && !this.json) {
-                this.setState({ error: 'ID is required' });
+                this.setState({ error: 'ID is required', isProcessing: false });
                 return;
             }
 
             if (this.props.jsonRequired && !this.json) {
-                this.setState({ error: 'Invalid JSON' });
+                this.setState({ error: 'Invalid JSON', isProcessing: false });
                 return;
             }
 
             this.props.submit.call(this);
             this.setState({ error: '' });
         } else {
-            this.setState({ error: 'No API Credentials found.' });
+            this.setState({ error: 'No API Credentials found.', isProcessing: false });
         }
     }
     renderForm() {
