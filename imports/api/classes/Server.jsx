@@ -83,7 +83,7 @@ export default class Server {
 
     didOwner(number) {
         if (this.dbConnection && number) {
-            let query = 'SELECT dids.accountid as aid, accounts.number as number, accounts.account_id as account_id FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? LIMIT 1';
+            let query = 'SELECT accounts.* FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? LIMIT 1';
             return this.dbConnection.selectOne(query, [number]);
         }
     }

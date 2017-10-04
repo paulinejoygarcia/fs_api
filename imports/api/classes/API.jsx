@@ -319,7 +319,7 @@ export default class API {
             case ENDPOINT.MESSAGE:
                 switch (method) {
                     case METHOD.POST:
-                        const Message = new MessageManager(this.accountId, body.from, body.to, body.body, 'outbound', body,attachment);
+                        const Message = new MessageManager(this.accountId, body.from, body.to, body.body, 'outbound', body.attachment);
                         try {
                             let saveMessage = Message.flush();
                             let price = Message.calculatePrice();

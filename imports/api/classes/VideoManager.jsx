@@ -16,7 +16,7 @@ export default class VideoManager {
             direction: direction == 'outbound' ? 'outbound' : 'inbound',
             attachment: attachment || null,
             result: null,
-            message_id: null,
+            message_id: '',
             account_id: accountId || null,
             created_dt: moment().valueOf()
         };
