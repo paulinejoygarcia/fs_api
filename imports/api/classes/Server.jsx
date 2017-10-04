@@ -85,7 +85,7 @@ export default class Server {
 
     didOwner(number) {
         if (this.dbConnection && number) {
-            let query = 'SELECT dids.accountid as aid, accounts.number as number, accounts.account_id as account_id FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? LIMIT 1';
+            let query = 'SELECT accounts.* FROM dids JOIN accounts ON dids.accountid = accounts.id WHERE dids.number = ? LIMIT 1';
             return this.dbConnection.selectOne(query, [number]);
         }
     }
@@ -615,53 +615,55 @@ export default class Server {
     }
 
     smppReceive(from, to, message) {
-        let owner = this.didOwner(to);
-        if(!owner)return {
-            success: false,
-            code: 404,
-            error: 'Owner not found'
-        };
-        const Message = new MessageManager(owner.account_id);
-        Message.parseJSON({
-            from: from,
-            to: to,
-            body: message
-        });
-        let price = Message.getPrice();
-        let query = "SELECT * FROM `accounts` WHERE `account_id`=?";
-        let result = this.dbConnection.selectOne(query, [owner.account_id]);
-        if (result) {
-            this.accountData = result;
-            if(!this.isAccountBillable(result, price))
-                return {
+        let accountData = this.didOwner(to);
+        if (!accountData)
+            return {
+                success: false,
+                code: 404,
+                error: 'Account not found'
+            };
+        const msgMngr = new MessageManager(accountData.account_id, from, to, message);
+        let price = msgMngr.calculatePrice();
+        if (accountData) {
+            if (!this.isAccountBillable(accountData, price)) {
+                let error = {
                     success: false,
                     code: 400,
                     error: 'Insufficient funds'
                 };
-            const app = this.didApp(owner.account_id, from);
-            if(!app)return {
-                success: false,
-                code: 400,
-                error: 'error has occurred when processing request URL '
-            };
-            let v = Message.json;
-            delete v._id;
-            delete v.result;
-                this.processRequestUrl(v, app.msg_url, app.msg_method, app.msg_fb_url, app.msg_fb_method);
-
-            let saveMessage = Message.flush();
-            if(!saveMessage) return {
-                success: false,
-                code: 400,
-                error: 'error has occurred when saving message'
-            };
-            if(this.updateAccountBalance(price, "debit")) {
-                return {
-                    success: true,
-                    code: 200,
-                    data: 'Success'
-                };
+                msgMngr.setResult(error);
+                msgMngr.flush();
+                return error;
             }
+
+            let charge = this.chargeAccount(accountData, price);
+            let result = {
+                success: charge.success,
+                code: 200,
+                data: {
+                    _info: charge.success ? 'Message received' : charge.error,
+                    result: charge.data
+                }
+            };
+            msgMngr.setResult(result);
+            msgMngr.flush();
+            if (!result.success)
+                return;
+
+            const app = this.didApp(accountData.id, to);
+            if (!app) {
+                let error = {
+                    success: false,
+                    code: 400,
+                    error: 'Application not found, could not process message callback'
+                };
+                msgMngr.setResult(error);
+                msgMngr.flush();
+                return error;
+            }
+            let parameters = msgMngr.toApiJson();
+            this.processRequestUrl(parameters, app.msg_url, app.msg_method, app.msg_fb_url, app.msg_fb_method);
+            return result;
         }
     }
 
@@ -728,9 +730,9 @@ export default class Server {
     smtpReceive(file) {
         const mms = MM4.parseMms(file);
         const msgId = mms.messageId;
-        let message = MessageDB.findOne({message_id: msgId});
+        let message = MessageDB.findOne({ message_id: msgId });
         let owner = this.didOwner(message.from);
-        if(!owner)return{
+        if (!owner) return {
             success: false,
             code: 400,
             error: 'Owner Not Found'
@@ -747,14 +749,14 @@ export default class Server {
             let result = this.dbConnection.selectOne(query, [owner.account_id]);
             if (result) {
                 this.accountData = result;
-                if(!this.isAccountBillable(result, price))
+                if (!this.isAccountBillable(result, price))
                     return {
                         success: false,
                         code: 400,
                         error: 'Insufficient funds'
                     };
                 const app = this.didApp(owner.account_id, message.from);
-                if(!app)return {
+                if (!app) return {
                     success: false,
                     code: 404,
                     error: 'error has occurred app not found'
@@ -764,12 +766,12 @@ export default class Server {
                 delete v.result;
                 this.processRequestUrl(v, app.msg_url, app.msg_method, app.msg_fb_url, app.msg_fb_method);
                 let saveMessage = Message.flush();
-                if(!saveMessage) return {
+                if (!saveMessage) return {
                     success: false,
                     code: 400,
                     error: 'error has occurred when processing request URL'
                 };
-                if(this.updateAccountBalance(price, "debit")) {
+                if (this.updateAccountBalance(price, "debit")) {
                     return {
                         success: true,
                         code: 200,
