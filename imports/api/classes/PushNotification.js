@@ -21,10 +21,17 @@ export default class PushNotification {
             'Content-Type': 'application/json',
             Authorization: 'key=' + this.server_key
         });
-        if(JSON.parse(result.data) && JSON.parse(result.data).results && JSON.parse(result.data).results[0].error)
+        if(result.data){
+            let parsedResult = JSON.parse(result.data);
+            if(parsedResult && parsedResult.results && parsedResult.results[0].error)
+                return {
+                    success: false,
+                    data: parsedResult.results[0].error
+                };
+        } else
             return {
                 success: false,
-                data: JSON.parse(result.data).results[0].error
+                data: null
             };
         return {
             success: true,
