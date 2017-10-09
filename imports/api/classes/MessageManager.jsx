@@ -15,6 +15,7 @@ export default class MessageManager {
             status: 0,
             price: 0,
             result: null,
+            internal_id: '',
             message_id: '',
             account_id: accountId || null,
             created_dt: moment().valueOf()
@@ -50,6 +51,10 @@ export default class MessageManager {
             }
         }
         return this.json.price;
+    }
+
+    setInternalId(id) {
+        this.json.internal_id = id;
     }
 
     setMessageId(id) {

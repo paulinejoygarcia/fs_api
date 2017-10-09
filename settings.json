@@ -24,7 +24,7 @@
             "password": "",
             "database": "db"
         },
-        "private_key":""
+        "private_key": ""
     },
     "stripe": {
         "test": {
@@ -58,11 +58,11 @@
     "pricing": {
         "sms": {
             "in": 0.002,
-            "out": 0.005
+            "out": 0.003
         },
         "mms": {
-            "in": 0.002,
-            "out": 0.005
+            "in": 0.01,
+            "out": 0.01
         },
         "pushNotification": 0.001,
         "socialPost": 0.003,
