@@ -1,12 +1,14 @@
 import API from './API';
 import Joi from './Joi';
 import Freeswitch from './Freeswitch';
+import MessageManager from './MessageManager';
 import MySqlWrapper from './MySqlWrapper';
 import MM4 from './MM4';
 import Smpp from './Smpp';
 import Smtp from './Smtp';
 import Util from './Utilities';
 import XmlParser from './XmlParser';
+import { MessageDB } from '../message';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import moment from 'moment';
@@ -724,16 +726,55 @@ export default class Server {
     }
 
     smppReceive(from, to, message) {
-        //this confirms that a new sms was received
+        let accountData = this.didOwner(to);
+        if (!accountData)
+            return {
+                success: false,
+                code: 404,
+                error: 'Account not found'
+            };
+        const msgMngr = new MessageManager(accountData.account_id, from, to, message);
+        let price = msgMngr.calculatePrice();
+        if (!this.isAccountBillable(accountData, price)) {
+            let error = {
+                success: false,
+                code: 400,
+                error: 'Insufficient funds'
+            };
+            msgMngr.setResult(error);
+            msgMngr.flush();
+            return error;
+        }
 
-        //TODO: 
-        //get owner of the did number (didOwner function)
-        //get number of parts the message body has to calculate total sms price (use getParts)
-        //check if account is billable, if not set result to insufficient funds
-        //get application related to the did number (didApp function)
-        //construct object to be sent to the msg_url of the application
-        //charge the account (use manager class when inserting record)
-        //send the constructed object to msg_url using processRequestUrl
+        let charge = this.chargeAccount(accountData, price);
+        let result = {
+            success: charge.success,
+            code: 200,
+            data: {
+                _info: charge.success ? 'SMS received' : charge.error,
+                result: charge.data
+            }
+        };
+        msgMngr.setMessageId(`${Util.genRandomString(10)}-${Date.now()}`);
+        msgMngr.setResult(result);
+        msgMngr.flush();
+        if (!result.success)
+            return;
+
+        const app = this.didApp(accountData.id, to);
+        if (!app) {
+            let error = {
+                success: false,
+                code: 400,
+                error: 'Application not found, could not process message callback'
+            };
+            msgMngr.setResult(error);
+            msgMngr.flush();
+            return error;
+        }
+        let parameters = msgMngr.toApiJson();
+        this.processRequestUrl(parameters, app.msg_url, app.msg_method, app.msg_fb_url, app.msg_fb_method);
+        return result;
     }
 
     smtpSend(from, to, att, body) {
@@ -770,7 +811,7 @@ export default class Server {
 
         client.on('ready', function (success, response) {
             if (success) {
-                showDebug('The message was transmitted successfully: %s', response);
+                showNotice('The message was transmitted successfully: %s', response);
                 client.quit();
                 const id = response.substring(response.lastIndexOf("<") + 1, response.lastIndexOf(">"));
                 fut.return({
@@ -799,17 +840,89 @@ export default class Server {
     smtpReceive(file) {
         const that = this;
         const mms = MM4.parseMms(file);
+        const msgId = mms.messageId;
+        const body = mms.body;
+        const attachment = mms.attachment;
+        delete mms.messageId;
+        delete mms.body;
+        delete mms.attachment;
         if (MM4.isResponse(mms.messageType)) {
-            showDebug('MMS send server response: %s', mms);
-            //this confirms that mms send is successful
+            showNotice('MMS send server response: %s', mms);
+            let messageDoc = MessageDB.findOne({ internal_id: mms.internalMessageId });
+            if (messageDoc) {
+                let msgMngr = new MessageManager();
+                msgMngr.parseJSON(messageDoc);
+                msgMngr.setMessageId(msgId);
+                msgMngr.setResult(mms);
+                msgMngr.calculatePrice();
+                msgMngr.flush();
+                return {
+                    success: true,
+                    code: 200,
+                    data: 'MMS record updated'
+                };
+            } else {
+                return {
+                    success: false,
+                    code: 404,
+                    error: 'MMS record not found'
+                };
+            }
+        } else if (MM4.isRequest(mms.messageType) && attachment) {
+            showNotice('MMS received: %s', mms);
+            const from = MM4.getNumber(mms.from);
+            const to = MM4.getNumber(mms.to);
+            let accountData = this.didOwner(to);
+            if (!accountData)
+                return {
+                    success: false,
+                    code: 404,
+                    error: 'Account not found'
+                };
 
-            //TODO:
-            //get related document from mongo db (use manager class when updating record)
-            //set result object
-            //set message id
-            //update document
-        } else if (MM4.isRequest(mms.messageType) && mms.attachment) {
-            showDebug('MMS received: %s', mms);
+            const msgMngr = new MessageManager(accountData.account_id, from, to, body, 'inbound', attachment);
+            let price = msgMngr.calculatePrice();
+            if (!this.isAccountBillable(accountData, price)) {
+                let error = {
+                    success: false,
+                    code: 400,
+                    error: 'Insufficient funds'
+                };
+                msgMngr.setResult(error);
+                msgMngr.flush();
+                return error;
+            }
+
+            let charge = this.chargeAccount(accountData, price);
+            let result = {
+                success: charge.success,
+                code: 200,
+                data: {
+                    _info: charge.success ? 'MMS received' : charge.error,
+                    result: charge.data
+                }
+            };
+            msgMngr.setMessageId(`${Util.genRandomString(10)}-${Date.now()}`);
+            msgMngr.setResult(result);
+            msgMngr.flush();
+            if (!result.success)
+                return;
+
+            const app = this.didApp(accountData.id, to);
+            if (!app) {
+                let error = {
+                    success: false,
+                    code: 400,
+                    error: 'Application not found, could not process message callback'
+                };
+                msgMngr.setResult(error);
+                msgMngr.flush();
+                return error;
+            }
+            let parameters = msgMngr.toApiJson();
+            this.processRequestUrl(parameters, app.msg_url, app.msg_method, app.msg_fb_url, app.msg_fb_method);
+            return result;
+
             //this confirms that a new mms was received
 
             //TODO:

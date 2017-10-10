@@ -7,6 +7,7 @@ import Linkedin from './Linkedin';
 import Pinterest from './Pinterest';
 import Twitter from './Twitter';
 import Instagram from './Instagram';
+import PushNotification from './PushNotification';
 import FaxManager, { FaxDB } from './FaxManager';
 import { CCInfoDB, BillingInfoDB } from '../payment';
 import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
@@ -17,6 +18,8 @@ import VideoManager from './VideoManager';
 import { MessageDB } from '../message';
 import moment from 'moment';
 import MM4 from './MM4';
+import PushNotifManager from './PushNotifManager';
+import moment from 'moment';
 import { PushNotifDB } from '../pushNotifications';
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
@@ -236,7 +239,8 @@ export default class API {
                         let queryPush = { account_id: this.accountId };
                         let optionsPush = { sort: { createdTimestamp: -1 } };
                         if (this.subEndpoint)
-                            queryPush._id = new Mongo.ObjectID(this.subEndpoint);
+                            queryPush._id = this.subEndpoint.match(/^[0-9a-fA-F]{24}$/)?
+                                new Mongo.ObjectID(this.subEndpoint):this.subEndpoint;
                         if (body.limit)
                             optionsPush.limit = parseInt(body.limit);
                         PushNotifDB.find(queryPush, optionsPush).fetch().forEach((PushNotif) => {
@@ -259,28 +263,11 @@ export default class API {
                             success: true,
                             code: 200,
                             data: data
-                        }
+                        };
                     case METHOD.POST:
                         body.account_id = this.accountId;
                         body.createdTimestamp = moment().valueOf();
-                        if (!this.isAccountBillable(Meteor.settings.pricing.pushNotification))
-                            return {
-                                success: false,
-                                code: 400,
-                                error: 'Insufficient funds to process request'
-                            };
-                        let chargeResponse = this.chargeAccount(Meteor.settings.pricing.pushNotification);
-                        if (!chargeResponse.success)
-                            return {
-                                success: false,
-                                code: 500,
-                                error: chargeResponse.error
-                            };
-                        return {
-                            success: true,
-                            code: 200,
-                            data: { chargeResponse, PushNotifId: PushNotifDB.insert(body)._str }
-                        };
+                        return this.pushNotif(body,this.accountId);
                         break;
                 }
                 break;
@@ -488,6 +475,53 @@ export default class API {
                 break;
         }
         return { success: false, code: 404, error: 'Invalid request!' };
+    }
+
+    pushNotif(body,accId){
+        let result = null;
+        let price = Meteor.settings.pricing.pushNotification || 0.001;
+        let notif = new PushNotifManager(body,accId);
+        if (!this.isAccountBillable(price)) {
+            const error = {
+                success: false,
+                code: 400,
+                error: 'Insufficient funds to process request'
+            };
+            notif.setResult(error);
+            notif.flush();
+            return error;
+        }
+        notif.flush();
+        let pushNotif = new PushNotification(body.server_key, body.registration_id);
+        result = pushNotif.sendNotif(notif.json);
+        let error = 'Push Notification could not be processed';
+        if (result) {
+            notif.setResult(result);
+            notif.flush();
+            if (result.success) {
+                let charge = this.chargeAccount(price);
+                if(charge.success){
+                    notif.setPrice(price);
+                    notif.flush();
+                }
+                return {
+                    success: charge.success,
+                    code: 200,
+                    data: {
+                        _info: charge.success ? 'Push notification processed successfully' : charge.error,
+                        ...result.data
+                    }
+                };
+            } else {
+                error = result.data
+            }
+        }
+
+        return {
+            success: false,
+            code: 200,
+            data: error
+        };
     }
 
     faxGet(id) {

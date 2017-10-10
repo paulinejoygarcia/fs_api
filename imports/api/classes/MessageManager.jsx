@@ -15,6 +15,7 @@ export default class MessageManager {
             status: 0,
             price: 0,
             result: null,
+            internal_id: '',
             message_id: '',
             account_id: accountId || null,
             created_dt: moment().valueOf()
@@ -51,7 +52,13 @@ export default class MessageManager {
         }
         return this.json.price;
     }
+    setInternalId(id) {
+        this.json.internal_id = id;
+    }
 
+    setMessageId(id) {
+        this.json.message_id = id;
+    }
     setResult(result) {
         this.json.result = result;
     }
@@ -65,6 +72,7 @@ export default class MessageManager {
             body: this.json.body,
             price: this.json.price,
             result: this.json.result,
+            messageId: this.json.message_id,
             createdDt: moment(this.json.createdDt).format('YYYY-MM-DD HH:mm:ss')
         };
         if (this.json.attachment)
