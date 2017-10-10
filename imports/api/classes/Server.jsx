@@ -187,7 +187,7 @@ export default class Server {
 
                 api.setEndpoint(endpoint, subEndpoint, extEndpoint);
 
-                result = api.doProcess(request.method, data.body, this.smtpSend, this.smppSend, this.processRequestUrl);
+                result = api.doProcess(request.method, data.body);
                 data = { ...data, ...result };
                 retval = { ...retval, ...result };
             }
@@ -346,7 +346,113 @@ export default class Server {
                         break;
                 }
                 break;
-
+            case ENDPOINT.MESSAGE:
+                switch (method) {
+                    case METHOD.GET:
+                        if (!params.sub || !params.sub.trim()) {
+                            retval.code = 404;
+                            retval.error = 'Missing `id` access denied!';
+                            retval.success = false;
+                            return retval;
+                        }
+                        break;
+                    case METHOD.POST:
+                        let files = [];
+                        if(retval.body.files){
+                            retval.body.files.forEach(file => {
+                                if(file.fieldname == 'files'){
+                                    let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                    fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                    files.push({
+                                        filename: localpath,
+                                        encoding: file.encoding,
+                                        mime_type: file.mimetype
+                                    })
+                                }
+                            });
+                            retval.body.attachment = files;
+                        }
+                        joiSchema = {
+                            to: Joi.number(true),
+                            from: Joi.number(true),
+                            body: Joi.string(true),
+                            attachment: Joi.array(Joi.file('files', false), 1)
+                        };
+                        if(params.sub === ENDPOINT_ACTION.MESSAGE_SMS) {
+                            if (retval.body.files.length > 0) {
+                                retval.code = 400;
+                                retval.error = 'Sms does not accept file attachment';
+                                retval.success = false;
+                                return retval;
+                            }
+                        }else{
+                            let files = [];
+                            if (retval.body.files) {
+                                retval.body.files.forEach(file => {
+                                    if (file.fieldname == 'files') {
+                                        let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                        fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                        files.push({
+                                            filename: localpath,
+                                            encoding: file.encoding,
+                                            mime_type: file.mimetype
+                                        })
+                                    }
+                                });
+                                retval.body.attachment = files;
+                            }
+                            if(!retval.body.attachment || retval.body.files.length == 0){
+                                retval.code = 400;
+                                retval.error = '`files` is required';
+                                retval.success = false;
+                                return retval;
+                            }
+                            joiSchema.attachment = Joi.array(Joi.file('files', false), 1);
+                            break;
+                        }
+                }
+                break;
+            case ENDPOINT.VIDEO:
+                switch (method) {
+                    case METHOD.GET:
+                        if (!params.sub || !params.sub.trim()) {
+                            retval.code = 404;
+                            retval.error = 'Missing `id` access denied!';
+                            retval.success = false;
+                            return retval;
+                        }
+                        break;
+                    case METHOD.POST:
+                        let files = [];
+                        if(retval.body.files){
+                            retval.body.files.forEach(file => {
+                                if(file.fieldname == 'files'){
+                                    let localpath = `${moment().format('MMDDYYYYhhmmss')}_${file.originalname}`;
+                                    fs.writeFileSync(PATH.UPLOAD + localpath, file.buffer);
+                                    files.push({
+                                        filename: localpath,
+                                        encoding: file.encoding,
+                                        mime_type: file.mimetype
+                                    })
+                                }
+                            });
+                            retval.body.attachment = files;
+                        }
+                        if(!retval.body.attachment || retval.body.files.length == 0){
+                            retval.code = 400;
+                            retval.error = '`files` is required';
+                            retval.success = false;
+                            return retval;
+                        }
+                        joiSchema = {
+                            to: Joi.number(true),
+                            from: Joi.number(true),
+                            body: Joi.string(true),
+                            attachment: Joi.array(Joi.file('files', false), 1)
+                        };
+                        break;
+                }
+                break;
             case ENDPOINT.FAX:
                 switch (method) {
                     case METHOD.POST:
@@ -600,8 +706,13 @@ export default class Server {
                 retval.success = false;
             }
         }
-
         return retval;
+    }
+    didApp(accountId, number) {
+        if (this.dbConnection && accountId && number) {
+            let query = 'SELECT friendly_name, call_url, call_method, call_fb_url, call_fb_method, msg_url, msg_method, msg_fb_url, msg_fb_method, fax_url, fax_method, fax_fb_url, fax_fb_method FROM fs_applications fa JOIN dids d ON fa.id = d.fs_app_id WHERE fa.accountid = ? AND d.number = ? LIMIT 1';
+            return this.dbConnection.selectOne(query, [accountId, number]);
+        }
     }
 
     smppSend(from, to, message) {

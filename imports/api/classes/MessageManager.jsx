@@ -52,7 +52,6 @@ export default class MessageManager {
         }
         return this.json.price;
     }
-
     setInternalId(id) {
         this.json.internal_id = id;
     }
@@ -60,7 +59,6 @@ export default class MessageManager {
     setMessageId(id) {
         this.json.message_id = id;
     }
-
     setResult(result) {
         this.json.result = result;
     }

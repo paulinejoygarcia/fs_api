@@ -11,37 +11,37 @@ import Reports from '../../ui/components/reports/Reports.jsx';
 
 const customHistory = createBrowserHistory();
 const unauthenticatedPages = [
-  '/login',
-  '/register',
-  '/tools/api-explorer/',
-  '/docs/api/rest/'
+    '/login',
+    '/register',
+    '/tools/api-explorer/',
+    '/docs/api/rest/'
 ];
 export const onAuthChange = (isAuthenticated) => {
-  const pathname = customHistory.location.pathname;
-  const isUnauthenticatedPage = () => {
-    return unauthenticatedPages.find(p => {
-      if (p.endsWith('/')) {
-        let exact = (pathname == p) || (pathname == p.substring(0, p.length - 1));
-        return exact || pathname.startsWith(p.substring(0, p.length - 1));
-      } else {
-        return pathname == p;
-      }
-    });
-  };
-  if (isUnauthenticatedPage() && isAuthenticated)
-    customHistory.replace('/');
-  else if (!isUnauthenticatedPage() && !isAuthenticated)
-    customHistory.replace('/login');
+    const pathname = customHistory.location.pathname;
+    const isUnauthenticatedPage = () => {
+        return unauthenticatedPages.find(p => {
+            if (p.endsWith('/')) {
+                let exact = (pathname == p) || (pathname == p.substring(0, p.length - 1));
+                return exact || pathname.startsWith(p.substring(0, p.length - 1));
+            } else {
+                return pathname == p;
+            }
+        });
+    };
+    if (isUnauthenticatedPage() && isAuthenticated)
+        customHistory.replace('/');
+    else if (!isUnauthenticatedPage() && !isAuthenticated)
+        customHistory.replace('/login');
 };
 
 export default routes = (
-  <Router history={customHistory}>
-    <Switch>
-      <Route path="/tools/api-explorer/:section?" component={ApiExplorer} />
-      <Route path="/docs/api/rest/:section?" component={ApiDoc} />
-      <Route path="/:component" component={Main} />
-      <Route path="/" component={Main} />
-      <Route component={NotFound} />
-    </Switch>
-  </Router>
+    <Router history={customHistory}>
+        <Switch>
+            <Route path="/tools/api-explorer/:section?" component={ApiExplorer}/>
+            <Route path="/docs/api/rest/:section?" component={ApiDoc}/>
+            <Route path="/:component" component={Main}/>
+            <Route path="/" component={Main}/>
+            <Route component={NotFound}/>
+        </Switch>
+    </Router>
 );

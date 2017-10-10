@@ -100,7 +100,7 @@ class RequestManager extends Component {
                             {this.props.jsonRequired &&
                                 <div className="form-group">
                                     <label>Request Parameters</label>
-                                    <textarea name="json" value={this.state.json} onChange={this.inputChanged} className="form-control" placeholder="Enter valid JSON Object"></textarea>
+                                    <textarea name="json" value={this.state.json} onChange={this.inputChanged} className="form-control" placeholder="Enter valid JSON Object"/>
                                 </div>
                             }
                             <button type="submit" className="btn btn-primary" disabled={this.state.isProcessing}>Try it now</button>

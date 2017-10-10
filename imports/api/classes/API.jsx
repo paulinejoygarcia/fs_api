@@ -13,10 +13,14 @@ import { CCInfoDB, BillingInfoDB } from '../payment';
 import SocialAccountManager, { SocialAccountDB } from './SocialAccountManager';
 import SocialCommentManager, { SocialCommentDB } from './SocialCommentManager';
 import SocialPostManager, { SocialPostDB } from './SocialPostManager';
+import MessageManager from './MessageManager';
+import VideoManager from './VideoManager';
+import { MessageDB } from '../message';
+import moment from 'moment';
+import MM4 from './MM4';
 import PushNotifManager from './PushNotifManager';
 import moment from 'moment';
 import { PushNotifDB } from '../pushNotifications';
-
 export default class API {
     constructor(accountId, api, secret, accessCode, ipAddress) {
         this.api = api;
@@ -79,12 +83,12 @@ export default class API {
     chargeAccount(price) {
         return server.chargeAccount(this.accountData, price);
     }
-
+  
     didOwner(number) {
         return server.didOwner(number);
     }
-
-    doProcess(method, body, smtpSend, smppSend, processRequestUrl) {
+  
+    doProcess(method, body) {
         delete body.accessCode;
         switch (this.endpoint) {
             case ENDPOINT.AUTH: {
@@ -302,15 +306,103 @@ export default class API {
             case ENDPOINT.MESSAGE:
                 switch (method) {
                     case METHOD.POST:
+                        const Message = new MessageManager(this.accountId, body.from, body.to, body.body, 'outbound', body.attachment);
                         try {
-
+                            let saveMessage = Message.flush();
+                            let price = Message.calculatePrice();
+                            if (!saveMessage) break;
+                            if (!this.isAccountBillable(price))
+                                return {
+                                    success: false,
+                                    code: 400,
+                                    error: 'Insufficient funds'
+                                };
+                            let send = {
+                                success: false,
+                                data: 'Failed sending message'
+                            };
+                            const record = Message.json;
+                            const from = MM4.getSender(record.from);
+                            const to = MM4.getRcpt(record.to);
+                            const originator = MM4.getOriginator(record.from);
+                            const body = record.body;
+                            const a = record.attachment;
+                            switch (this.subEndpoint) {
+                                case ENDPOINT_ACTION.MESSAGE_SMS:
+                                    send = server.smppSend(record.from, record.to, record.body);
+                                    break;
+                                case ENDPOINT_ACTION.MESSAGE_MMS:
+                                    console.log(a);
+                                        att = {
+                                            filename: a.filename,
+                                            type: a.mime_type.split('/')[0],
+                                            contentType: a.mime_type,
+                                            path: PATH.UPLOAD + a.filename
+                                        };
+                                    send = server.smtpSend(from, to, originator, {}, body, MM4.getHost(), MM4.getPort());
+                                    record.result = { internalId: send.data };
+                                    break;
+                            }
+                            if (send.success) {
+                                record.price = price;
+                                Message.parseJSON(record);
+                                Message.flush();
+                            }
+                            if (send.success) {
+                                record.result = { internalId: send.data };
+                                record.price = price;
+                                Message.parseJSON(record);
+                                Message.flush();
+                                const app = server.didApp(this.accountId, record.from);
+                                if (!app.success) return send;
+                                if (app.data.msg_url || app.data.msg_fb_url) {
+                                    const v = Message.json;
+                                    delete v._id;
+                                    delete v.result;
+                                    server.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
+                                }
+                                this.updateAccountBalance(price, "debit");
+                                return {
+                                    success: true,
+                                    code: 200,
+                                    data: 'Message Sent.'
+                                };
+                            }
                         } catch (err) {
                             console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
                         }
                         break;
                     case METHOD.GET:
+                        let retVal = {
+                            success: false,
+                            code: 400
+                        };
+                        let query = {};
+                        switch (this.subEndpoint) {
+                            case ENDPOINT_ACTION.MESSAGE_SMS:
+                                if (body.message_id)
+                                    query = { message_id: body.message_id, attachment: {$eq: null} };
+                                else
+                                    query = { account_id: this.accountId, attachment: {$eq: null} };
+                                break;
+                            case ENDPOINT_ACTION.MESSAGE_MMS:
+                                if (body.message_id)
+                                    query = { message_id: body.message_id, attachment: {$ne: null} };
+                                else
+                                    query = { account_id: this.accountId, attachment: {$ne: null} };
+                                break;
+                        }
                         try {
-
+                            retVal.success = true;
+                            retVal.code = 200;
+                            if (body.message_id)
+                                retVal.data = MessageDB.findOne(query);
+                            else {
+                                let messages = MessageDB.find(query);
+                                retVal.count = messages.count();
+                                retVal.data = messages.fetch();
+                            }
+                            return retVal;
                         } catch (err) {
                             console.log('end point[%s]: %s.', ENDPOINT.MESSAGE, err.message);
                         }
@@ -329,10 +421,48 @@ export default class API {
                     case METHOD.POST:
                         switch (this.subEndpoint) {
                             case ENDPOINT_ACTION.VIDEO_SCREENSHOT:
-                                const ctrl = new ScreenshotsCtrl(this.databaseConnection, body, this.accountId, smtpSend, smppSend, processRequestUrl, this.updateAccountBalance, this.isAccountBillable, this.getAccountBalance, this.didOwner);
-                                let res = ctrl.insert();
-                                if (res.success) res = ctrl.send();
-                                return res;
+                                const ScreenShot = new VideoManager(this.accountId, body.from, body.to, body.body, 'outbound', body.attachment);
+                                let saveMessage = ScreenShot.flush();
+                                let price = ScreenShot.price;
+                                if(!saveMessage) break;
+                                if (!this.isAccountBillable(price))
+                                    return {
+                                        success: false,
+                                        code: 400,
+                                        error: 'Insufficient funds'
+                                    };
+                                const record = ScreenShot.json;
+                                const from = MM4.getSender(record.from);
+                                const to = MM4.getRcpt(record.to);
+                                const originator = MM4.getOriginator(record.from);
+                                const a = record.attachment;
+                                const att = {
+                                    filename: a.filename,
+                                    type: a.mime_type.split('/')[0],
+                                    contentType: a.mime_type,
+                                    path: PATH.UPLOAD + a.filename
+                                };
+                                const body = record.body;
+                                let send = server.smtpSend(from, to, originator, att, body, MM4.getHost(), MM4.getPort());
+                                if (send.success) {
+                                    record.result = { internalId: send.data };
+                                    record.price = ScreenShot.price;
+                                    ScreenShot.parseJSON(record);
+                                    ScreenShot.flush();
+                                    const app = server.didApp(record.from);
+                                    if (!app.success) return send;
+                                    if (app.data.msg_url || app.data.msg_fb_url) {
+                                        const v = ScreenShot.json;
+                                        delete v.result;
+                                        server.processRequestUrl(v, app.data.msg_url, app.data.msg_method, app.data.msg_fb_url, app.data.msg_fb_method);
+                                    }
+                                    this.updateAccountBalance(price, "debit");
+                                    return {
+                                        success: true,
+                                        code: 200,
+                                        data: 'Message Sent.'
+                                    };
+                                }
                         }
                         break;
                     default:
