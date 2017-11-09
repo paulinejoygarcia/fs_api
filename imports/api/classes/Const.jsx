@@ -200,3 +200,45 @@ export const GRITTER_STATUS = {
     NOTICE: 'with-icon info-circle primary',
     SUCCESS: 'with-icon check-circle success'
 };
+
+export const NETWORK_PROVIDER = {
+    NETWORK_TW: 0x1,
+    NETWORK_NX: 0x2,
+    NETWORK_WA: 0x4,
+    NETWORK_TCS: 0x8,
+    NETWORK_PL: 0x10,
+    NETWORK_BW: 0x20,
+    NETWORK_OC: 0x40
+};
+
+export const NETWORK_STATUS_MESSAGES = {
+    '-1': 'Delivery could not be completed.',
+    1: 'Message sent - mobile carrier status uknown',
+    2: 'Absent Subscriber - Temporary (Subscriber UNAVAILABLE)',
+    3: 'Absent Subscriber - Permanent (Subscriber UNAVAILABLE)',
+    4: 'Call barred by user (BLOCKED by Subscriber)',
+    5: 'Portability Error (MOBILE OPERATOR ERROR)',
+    6: 'Anti-Spam Rejection (SPAM BLOCKED)',
+    7: 'Handset Busy (Subscriber BUSY)',
+    8: 'Network Error (MOBILE OPERATOR ERROR)',
+    9: 'Illegal Number (INVALID MOBILE PHONE #)',
+    10: 'Invalid Message',
+    11: 'Unroutable (BAD PHONE #)',
+    12: 'Destination Un-Reachable (HANDSET OFF or UNREACHABLE)',
+    13: 'Subscriber Age Restriction',
+    14: 'Number Blocked by Carrier',
+    15: 'Illegal Sender Address - rejected',
+    99: 'General Error (MOBILE OPERATOR ERROR)',
+    20003: 'Authentication Error - invalid username',
+    21211: 'The \'To\' number is not a valid phone number.',
+    21620: 'Please use only valid http and https urls',
+    30001: 'Queue overflow (Delivery in progress)',
+    30002: 'Account suspended',
+    30003: 'Unreachable destination handset (HANDSET OFF or UNREACHABLE)',
+    30004: 'Message blocked (BLOCKED by Subscriber)',
+    30005: 'Unknown (MOBILE OPERATOR ERROR)',
+    30006: 'Landline (INVALID MOBILE PHONE #)',
+    30007: 'Carrier violation (SPAM BLOCKED)',
+    30008: 'Unknown error (MOBILE OPERATOR ERROR)',
+    30009: 'Missing (INVALID MESSAGE)'
+};

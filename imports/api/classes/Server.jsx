@@ -16,6 +16,7 @@ import npmScp from 'scp2';
 import future from 'fibers/future';
 import fiber from 'fibers';
 import stream from 'stream';
+import {  getRecieptType, getIncomingInfo } from './SMSConfig';
 import { ENDPOINT, ENDPOINT_ACTION, ENDPOINT_CHECKPOINT, METHOD } from './Const';
 
 export default class Server {
@@ -961,6 +962,35 @@ export default class Server {
         }
         if (fut.wait()) return false;
         return fileName;
+    }
+    parseReceipt(data) {
+        let receiptInfo = getRecieptType(data);
+        if (receiptInfo) {
+            if (MessageDB.update({ messageId: receiptInfo.id }, { $set: { 'status.key': receiptInfo.key, dtReceived: moment().valueOf() } })) {
+                showNotice(`Interaction (${receiptInfo.id}) received status: ${receiptInfo.key}`);
+            } else {
+                showNotice(`Unknown interaction (${receiptInfo.id}) received status: ${receiptInfo.key}`);
+                return false;
+            }
+        }
+        return receiptInfo;
+    }
+    parseIncoming(data) {
+        return getIncomingInfo(data);
+    }
+    insertToMessages(data) {
+        let check = MessageDB.findOne({ messageId: data.messageId });
+        if(check)
+            return false;
+        return MessageDB.insert({
+            messageId: data.messageId,
+            to: data.to,
+            from: data.from,
+            message: data.message,
+            network: data.network,
+            attachment: data.attachment,
+            dtReceived: moment().toDate()
+        });
     }
 }
 showNotice = Util.showNotice;
